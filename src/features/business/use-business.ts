@@ -9,7 +9,7 @@ export function useBusiness() {
     'listings',
   );
   const [listingFilter, setListingFilter] = useState<
-    'all' | 'available' | 'expired'
+    'all' | 'available' | 'expired' | 'closed' | 'out-of-stock'
   >('all');
   const [requestFilter, setRequestFilter] = useState<
     'active' | 'history' | 'all'
@@ -18,12 +18,27 @@ export function useBusiness() {
   const form = useListingForm(resources);
   const requests = useBusinessRequests(resources);
   const visibleListings = resources.listings.filter(
-    (listing) =>
-      listingFilter === 'all' ||
-      (listingFilter === 'expired'
-        ? listing.pickupDeadline < getTodayInIstanbul()
-        : listing.pickupDeadline >= getTodayInIstanbul() &&
-          listing.quantityOnHand > listing.quantityReserved),
+    (listing) => {
+      if (listingFilter === 'all') return true;
+      if (listingFilter === 'closed') return listing.status === 'closed';
+      if (listingFilter === 'expired')
+        return (
+          listing.status === 'active' &&
+          listing.pickupDeadline < getTodayInIstanbul()
+        );
+      if (listingFilter === 'out-of-stock')
+        return (
+          listing.status === 'active' &&
+          listing.pickupDeadline >= getTodayInIstanbul() &&
+          listing.quantityOnHand <= listing.quantityReserved
+        );
+      return (
+        listing.status === 'active' &&
+        listing.pickupDeadline >= getTodayInIstanbul() &&
+        listing.quantityOnHand > listing.quantityReserved &&
+        listing.thicknessMm !== null
+      );
+    },
   );
   const visibleRequests = resources.incomingRequests.filter(
     (item) =>

@@ -1,5 +1,8 @@
 # Paket 4 — Veri modeli ve iş kuralları
 
+> Bu paket tesliminin tarihsel kaydıdır. Öğrenci/işletme arayüzleri ve sonraki
+> migration gereksinimleri için [Paket 5–6](package-5-6-completion.md) esas alınır.
+
 Başlangıç: Paket 3 / `22ca2c1`. Dal: `codex/package-4-data-rules`.
 
 ## Kayıtların yaşam döngüsü
@@ -66,9 +69,10 @@ talep kilitleri bundan sonra alınır. İlan/talep işlemleri ihtiyaç kilidi al
 İhtiyacı kilitlemeden önce genel rezervasyon temizliği çağrılmaması kilit
 sırasının ters dönmesini önler.
 
-Demo ve Supabase adaptörleri aynı AppServices sözleşmesini uygular. Düzenleme,
-kapatma ve arşivleme düğmeleri öğrenci/işletme ekranlarının Paket 5 ve 6
-çalışmalarına bırakıldı; bu paket onların veri ve yetki altyapısını sağlar.
+Demo ve Supabase adaptörleri aynı AppServices sözleşmesini uygular. Bu pakette
+öğrenci/işletme ekranları için lifecycle veri ve yetki altyapısı sağlandı.
+Paket 5/Aşama 1 öğrenci ihtiyaç düzenleme/arşivleme arayüzünü bu sözleşmeye
+bağlar; işletme ilan düzenleme/kapatma arayüzü sonraki aşamanın kapsamındadır.
 
 ## Doğrulama ve dağıtım sınırı
 

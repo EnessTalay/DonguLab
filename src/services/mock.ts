@@ -12,7 +12,9 @@ export interface DemoStore {
 }
 export function createDemoStore(listings: readonly Listing[] = [], needs: readonly Need[] = []): DemoStore {
   // Independent test/demo state, never mutate exported fixture objects.
-  return { listings: copy(listings.map(l => ({ ...l, status: l.status ?? 'active' }))), needs: copy(needs.map(n => ({ ...n, status: n.status ?? 'active' }))), requests: [], sequence: 0 };
+  return { listings: copy(listings.map(l => ({ ...l, description: l.description ?? '',
+    pickupInstructions: l.pickupInstructions ?? '', status: l.status ?? 'active' }))),
+    needs: copy(needs.map(n => ({ ...n, status: n.status ?? 'active' }))), requests: [], sequence: 0 };
 }
 // All service DTOs contain only JSON values; also works in Expo Go's Hermes runtime.
 const copy = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -48,9 +50,16 @@ export function createDemoServices(store: DemoStore, clock = () => new Date()): 
     }
     return { req, listing };
   }
+  const reasonValue = (reason?: string) => {
+    if (reason !== undefined && (typeof reason !== 'string' || reason.trim().length > 500)) {
+      throw new AppError('VALIDATION', 'Gerekçe en fazla 500 karakter olmalıdır.');
+    }
+    return reason?.trim() || null;
+  };
   const publicRequest = (req: StoredRequest): MaterialRequest => ({
     id: req.id, needId: req.needId, listingId: req.listingId, studentId: req.studentId,
     quantity: req.quantity, status: req.status,
+    rejectionReason: req.rejectionReason ?? null, cancellationReason: req.cancellationReason ?? null,
   });
   function views(side: 'student' | 'business') {
     const actor = user(side); expire();
@@ -71,12 +80,14 @@ export function createDemoServices(store: DemoStore, clock = () => new Date()): 
     async signOut() { profile = null; notify(); },
     async getSession() { return session(); },
     onAuthStateChange(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    async getListing(listingId) { user(); return copy(store.listings.find(l => l.id === listingId) ?? null); },
     async listListings() { user(); expire(); return copy(store.listings.filter(l => l.status === 'active')); },
     async listMyListings() { const actor = user('business'); expire(); return copy(store.listings.filter(l => l.businessId === actor.id)); },
     async createListing(input) {
       const actor = user('business'); validateListing(input, istanbulDate(clock()));
       // Whitelist fields: malicious runtime input cannot set owner or reservations.
       const listing: Listing = { id: id(), businessId: actor.id, status: 'active', title: input.title.trim(),
+        description: input.description.trim(), pickupInstructions: input.pickupInstructions.trim(),
         materialType: input.materialType, widthMm: input.widthMm, heightMm: input.heightMm,
         thicknessMm: input.thicknessMm, region: input.region.trim(), pickupDeadline: input.pickupDeadline,
         quantityOnHand: input.quantityOnHand, quantityReserved: 0 };
@@ -91,6 +102,7 @@ export function createDemoServices(store: DemoStore, clock = () => new Date()): 
       }
       validateListing(input, istanbulDate(clock()));
       Object.assign(listing, { title: input.title.trim(), materialType: input.materialType,
+        description: input.description.trim(), pickupInstructions: input.pickupInstructions.trim(),
         widthMm: input.widthMm, heightMm: input.heightMm, thicknessMm: input.thicknessMm,
         quantityOnHand: input.quantityOnHand, region: input.region.trim(), pickupDeadline: input.pickupDeadline });
       return copy(listing);
@@ -162,18 +174,20 @@ export function createDemoServices(store: DemoStore, clock = () => new Date()): 
         new Date(`${need.neededBy}T23:59:59.999+03:00`).getTime())).toISOString();
       listing.quantityReserved += req.quantity; req.status = 'approved'; return publicRequest(req);
     },
-    async rejectRequest(requestId) {
+    async rejectRequest(requestId, reason) {
       const { req } = ownedRequest(requestId, 'business');
       if (req.status === 'rejected') return publicRequest(req);
       if (req.status !== 'pending') throw new AppError('CONFLICT', 'Yalnız bekleyen talep reddedilebilir.');
+      req.rejectionReason = reasonValue(reason);
       req.status = 'rejected'; return publicRequest(req);
     },
-    async cancelRequest(requestId) {
+    async cancelRequest(requestId, reason) {
       expire(); const { req, listing } = ownedRequest(requestId, 'student');
       if (req.status === 'cancelled') return publicRequest(req);
       if (!['pending', 'approved'].includes(req.status)) throw new AppError('CONFLICT', 'Bu talep iptal edilemez.');
+      const cancellationReason = reasonValue(reason);
       if (req.status === 'approved') listing.quantityReserved -= req.quantity;
-      req.status = 'cancelled'; delete req.code; return publicRequest(req);
+      req.status = 'cancelled'; req.cancellationReason = cancellationReason; delete req.code; return publicRequest(req);
     },
     async issueDeliveryCode(requestId) {
       expire(); const { req } = ownedRequest(requestId, 'student');

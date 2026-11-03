@@ -1,5 +1,9 @@
 # Uygulama içi düzenleme — 3 Kasım 2026
 
+> 4 Kasım güncellemesi: öğrenci/işletme düzenleme ve detay akışlarının güncel
+> durumu [Paket 5–6](package-5-6-completion.md) belgesindedir. Aşağıdaki eski
+> test sayıları ve eksikler listesi tarihsel incelemeye aittir.
+
 > Tarihsel teslim/inceleme kaydıdır. Güncel kod yapısı için [mimari](architecture.md),
 > mevcut sözleşme için [servis belgesi](service-contract.md), değişiklikler için
 > [Paket 2](package-2-structure.md) esas alınmalıdır. Aşağıdaki test sonuçları kendi dönemine aittir.
@@ -29,8 +33,9 @@ işletme akışlarının tutarlılığına odaklanır.
 
 ## Bilinen ve henüz uygulanmayan ürün eksikleri
 
-- İlan/ ihtiyaç düzenleme, arşivleme ve silme: mevcut sunucu sözleşmesinde yok.
-  Durum ve stok kurallarıyla birlikte tasarlanmalı; yalnız UI düğmesi eklemek yeterli değil.
+- Öğrenci ihtiyaç düzenleme/arşivleme arayüzü Paket 5/Aşama 1 ile eklendi.
+  İlan düzenleme/kapatma arayüzü ve kayıt silme akışı halen yok; lifecycle ve
+  stok kuralları nedeniyle yalnızca UI düğmesi eklemek yeterli değildir.
 - Ayrı ilan detay ekranı, ilan açıklaması ve fotoğraflar için veri modeli genişlemesi.
 - Teslim yeri, saat aralığı ve taraflar arasında iletişim bilgisi paylaşımı için ürün kararı.
 - İhtiyaç tarihi ile son teslim alma tarihi arasındaki iş kuralının netleştirilmesi.

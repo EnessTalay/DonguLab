@@ -48,7 +48,7 @@ Bu depo bağımsız APK/IPA veya mağaza sürümü içermez.
 - İşletme: yönetici tarafından rol atanmış hesap → ilan oluştur → talebi onayla/reddet → kodla teslim.
 - Stok sunucuda atomik işlemlerle yönetilir; istemci sahiplik veya rol belirlemez.
 - İlanlar, ihtiyaçlar, talepler, filtreler, hata/boş/yüklenme durumları ve genel bakış ekranları vardır.
-- İşletme başvuru paneli, ilan/ihtiyaç düzenleme ve arşivleme, fotoğraf ve bildirimler henüz yoktur.
+- Öğrenci ihtiyaç düzenleme/arşivleme akışı vardır. İşletme başvuru paneli, ilan düzenleme/kapatma, fotoğraf ve bildirimler henüz yoktur.
 
 Yerel demoda Giriş ekranındaki Demo Öğrenci / Demo İşletme düğmeleri kullanılır.
 Hesaplar uygulamadan çıkış/giriş yapılarak değiştirilebilir; aynı sayfadaki bellek
@@ -97,6 +97,7 @@ canlı e-posta akışında kabul testi yapıldığı anlamına gelmez.
 - [Paket 2: kod yapısı ve yapılanlar](docs/package-2-structure.md)
 - [Paket 3: gezinme ve ekran durumları](docs/package-3-navigation.md)
 - [Paket 4: veri modeli ve iş kuralları](docs/package-4-data-rules.md)
+- [Paket 5–6: öğrenci ve işletme akışları](docs/package-5-6-completion.md)
 - [Önceki canlı altyapı doğrulaması](docs/live-supabase-verification.md) — tarihsel kayıt
 
 Expo API değişikliklerinde [SDK 57 belgelerini](https://docs.expo.dev/versions/v57.0.0/)

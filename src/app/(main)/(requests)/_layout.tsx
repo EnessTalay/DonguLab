@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { colors } from '@/theme/tokens';
+import { BackButton } from '@/components/back-button';
 
 export default function RequestsLayout() {
   return (
@@ -8,6 +9,7 @@ export default function RequestsLayout() {
         headerStyle: { backgroundColor: colors.canvas },
         headerTintColor: colors.heading,
         contentStyle: { backgroundColor: colors.canvas },
+        headerLeft: () => <BackButton fallback="/student/requests" />,
       }}
     >
       <Stack.Screen
@@ -16,6 +18,12 @@ export default function RequestsLayout() {
           title: 'Taleplerim',
           headerBackVisible: false,
           headerLeft: () => null,
+        }}
+      />
+      <Stack.Screen
+        name="student/requests/[id]"
+        options={{
+          title: 'Talep detayı',
         }}
       />
     </Stack>

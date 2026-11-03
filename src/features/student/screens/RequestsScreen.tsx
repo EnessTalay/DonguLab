@@ -10,9 +10,17 @@ import { studentService } from '@/features/student/service';
 import { useFocusedResource } from '@/hooks/use-focused-resource';
 import { ChoiceChips } from '@/components/choice-chips';
 import { StatePanel } from '@/components/state-panel';
+import { requestsForNeed } from '@/features/student/need-list';
+import {
+  studentCancelReasons,
+} from '@/features/requests/reasons';
 
 export default function RequestsScreen() {
-  const { created } = useLocalSearchParams<{ created?: string }>();
+  const { created, needId } = useLocalSearchParams<{
+    created?: string;
+    needId?: string;
+  }>();
+  const routeNeedId = Array.isArray(needId) ? needId[0] : needId;
   const [deliveryCodes, setDeliveryCodes] = useState<
     Record<string, { code: string; expiresAt: string }>
   >({});
@@ -20,19 +28,23 @@ export default function RequestsScreen() {
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState<string>(studentCancelReasons[0]);
   const [filter, setFilter] = useState<'active' | 'history' | 'all'>('active');
   const [now, setNow] = useState(() => Date.now());
   const { data, loading, error, reload } = useFocusedResource(
     useCallback(() => studentService.listMyRequests(), []),
   );
   const requests = data ?? [];
+  const needRequests = routeNeedId
+    ? requestsForNeed(requests, routeNeedId)
+    : requests;
   const activeFilter = created ? 'active' : filter;
-  const visibleRequests = requests.filter(
+  const visibleRequests = needRequests.filter(
     (item) =>
       activeFilter === 'all' ||
       (item.request.status === 'pending' ||
         item.request.status === 'approved') ===
-        (activeFilter === 'active'),
+      (activeFilter === 'active'),
   );
   const hasCodes = Object.keys(deliveryCodes).length > 0;
   useEffect(() => {
@@ -66,7 +78,7 @@ export default function RequestsScreen() {
     setBusy(true);
     setActionError('');
     try {
-      await studentService.cancelRequest(requestId);
+      await studentService.cancelRequest(requestId, cancelReason);
       setConfirmCancel(null);
       setDeliveryCodes((previous) => {
         const next = { ...previous };
@@ -112,6 +124,21 @@ export default function RequestsScreen() {
         Bekleyen talepler işletme onayı bekler. Onaylanan talebin teslim kodunu
         yalnız malzemeyi alırken işletmeyle paylaş.
       </Text>
+      {routeNeedId ? (
+        <StatePanel
+          kind="success"
+          title="Seçili ihtiyacın talepleri"
+          message="Bu listede yalnızca seçtiğin ihtiyaçla ilişkili talepler görünür."
+          secondaryAction={{
+            label: 'İhtiyaç detayına dön',
+            onPress: () =>
+              router.dismissTo({
+                pathname: '/student/needs/[id]',
+                params: { id: routeNeedId },
+              }),
+          }}
+        />
+      ) : null}
       <ChoiceChips
         value={activeFilter}
         onChange={(value) => {
@@ -140,11 +167,27 @@ export default function RequestsScreen() {
       {!loading && !error && visibleRequests.length === 0 ? (
         <StatePanel
           kind="empty"
-          title="Bu bölümde talep yok"
-          message="İhtiyacına uygun bir ilan seçerek talep oluşturabilirsin. Tamamlanan ve iptal edilen talepler Geçmiş bölümünde yer alır."
+          title={
+            routeNeedId
+              ? 'Bu ihtiyaç için bu bölümde talep yok'
+              : 'Bu bölümde talep yok'
+          }
+          message={
+            routeNeedId
+              ? activeFilter === 'active'
+                ? 'Bu ihtiyaç için bekleyen veya onaylanmış talep bulunmuyor.'
+                : 'Bu ihtiyaç için seçili durumda talep bulunmuyor.'
+              : 'İhtiyacına uygun bir ilan seçerek talep oluşturabilirsin. Tamamlanan ve iptal edilen talepler Geçmiş bölümünde yer alır.'
+          }
           action={{
-            label: 'İhtiyaçlarımı incele',
-            onPress: () => router.navigate('/student'),
+            label: routeNeedId ? 'İhtiyaç detayına dön' : 'İhtiyaçlarımı incele',
+            onPress: () =>
+              routeNeedId
+                ? router.dismissTo({
+                  pathname: '/student/needs/[id]',
+                  params: { id: routeNeedId },
+                })
+                : router.navigate('/student'),
           }}
         />
       ) : (
@@ -202,14 +245,55 @@ export default function RequestsScreen() {
                   </View>
                 ) : null}
 
+                <Pressable
+                  accessibilityRole="button"
+                  style={styles.detailButton}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/student/requests/[id]',
+                      params: { id: request.id },
+                    })
+                  }
+                >
+                  <Text style={styles.detailButtonText}>
+                    Talep detayını ve geçmişi gör →
+                  </Text>
+                </Pressable>
+
                 {request.status === 'pending' ||
-                request.status === 'approved' ? (
+                  request.status === 'approved' ? (
                   confirmCancel === request.id ? (
                     <View style={styles.codeBox}>
-                      <Text style={styles.body}>
-                        Talep iptal edilsin mi? Ayrılmış malzeme varsa yeniden
-                        kullanıma açılır.
+                      <Text style={[styles.body, { fontWeight: '700' }]}>
+                        Talep iptal edilsin mi?
                       </Text>
+                      <Text style={styles.body}>
+                        İptal gerekçenizi seçin:
+                      </Text>
+                      <View style={{ gap: 6, marginVertical: 6 }}>
+                        {studentCancelReasons.map((reason) => (
+                          <Pressable
+                            key={reason}
+                            accessibilityRole="button"
+                            onPress={() => setCancelReason(reason)}
+                            style={[
+                              styles.reasonChoice,
+                              cancelReason === reason &&
+                              styles.reasonChoiceSelected,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.reasonChoiceText,
+                                cancelReason === reason &&
+                                styles.reasonChoiceTextSelected,
+                              ]}
+                            >
+                              {reason}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
                       <ActionButton
                         title="Evet, talebi iptal et"
                         disabled={busy}
@@ -309,5 +393,39 @@ const styles = StyleSheet.create({
     color: colors.heading,
     fontWeight: '700',
     fontSize: 15,
+  },
+  detailButton: {
+    backgroundColor: '#f3f7f4',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  detailButtonText: {
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  reasonChoice: {
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  reasonChoiceSelected: {
+    borderColor: colors.primary,
+    backgroundColor: '#edf5f0',
+  },
+  reasonChoiceText: {
+    fontSize: 13,
+    color: colors.ink,
+  },
+  reasonChoiceTextSelected: {
+    color: colors.primary,
+    fontWeight: '700',
   },
 });

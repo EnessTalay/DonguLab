@@ -9,17 +9,33 @@ adımları yeni/boş projeler içindir; mevcut tablolara ilk migration'ı tekrar
 ## 1. Proje ve tablolar
 
 1. Supabase Dashboard'da yeni bir proje oluşturun.
-2. SQL Editor içinde `supabase/migrations/202611030001_core.sql`, ardından
-   `supabase/migrations/202611030002_lifecycle.sql` içeriğini birer kez çalıştırın.
-   İlk migration zaten uygulanmış mevcut projede **yalnız ikinci dosyayı**
-   çalıştırın. Önce veritabanı yedeği alın; stok/talep tablolarını silmeyin ve
-   seed ile sıfırlamayın. İkinci migration eski kayıtları active başlatır.
-   Uygulamanın Paket 4 sürümünü ikinci migration'dan sonra çalıştırın.
+2. SQL Editor içinde migration dosyalarını aşağıdaki sırayla birer kez çalıştırın:
+   - `supabase/migrations/202611030001_core.sql` — başlangıç şeması.
+   - `supabase/migrations/202611030002_lifecycle.sql` — durumlar ve düzenleme kuralları.
+   - `supabase/migrations/202611030003_listing_details.sql` — açıklama/teslim bilgileri ve ilan RPC'si.
+   - `supabase/migrations/202611040004_request_reasons.sql` — kalıcı ret/iptal gerekçeleri.
+   Mevcut projede **yalnız uygulanmamış dosyaları** sırayla çalıştırın. İlk
+   migration'ı mevcut tablolara tekrar uygulamayın. Önce veritabanı yedeği alın;
+   stok/talep tablolarını silmeyin ve seed ile sıfırlamayın. İkinci migration eski
+   kayıtları active başlatır. Yeni uygulama sürümü dört migration da uygulanınca kullanılmalıdır.
 3. İsterseniz Supabase CLI ile mevcut migration klasörünü kullanabilirsiniz:
    `npx supabase init`, `npx supabase login`, `npx supabase link --project-ref REF`,
    `npx supabase db push`. CLI bir geliştirme aracıdır; mobil pakete eklenmez.
 
 ## 2. Demo hesapları ve örnek kayıtlar
+
+4 Kasım 2026 salt okunur kontrolde bağlı canlı projede `listings.status` ve
+`requests.rejection_reason` alanları bulunmadı. Bu durum ilk migration sonrası
+güncellemelerin eksik olduğunu gösterir. Yönetici, uygulamayı kullanmadan önce
+2 → 3 → 4 geçişini tamamlamalıdır. Public/publishable anahtar şema değiştirmez.
+
+Geçiş sonrası SQL Editor'de şu salt okunur kontrolü çalıştırabilirsiniz:
+
+```sql
+select id, status, description, pickup_instructions from public.listings limit 1;
+select id, rejection_reason, cancellation_reason from public.requests limit 1;
+select to_regprocedure('public.listing_details_command(text,jsonb)');
+```
 
 Dashboard > Authentication > Users > Add user bölümünde şu iki hesabı oluşturun;
 e-posta onayını etkin olarak işaretleyin ve parolaları kendiniz belirleyin:

@@ -34,6 +34,10 @@ export default function StudentLayout() {
         name="student/matches/[needId]"
         options={{ title: 'Uygun ilanlar' }}
       />
+      <Stack.Screen
+        name="student/listings/[id]"
+        options={{ title: 'İlan detayı' }}
+      />
     </Stack>
   );
 }

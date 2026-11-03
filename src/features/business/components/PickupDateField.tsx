@@ -15,6 +15,7 @@ export function PickupDateField({
     BusinessModel,
     | 'form'
     | 'formErrors'
+    | 'submitting'
     | 'updateForm'
     | 'openPickupDatePicker'
     | 'iosDatePickerVisible'
@@ -27,6 +28,7 @@ export function PickupDateField({
   const {
     form,
     formErrors,
+    submitting,
     updateForm,
     openPickupDatePicker,
     iosDatePickerVisible,
@@ -42,6 +44,7 @@ export function PickupDateField({
       onChangeText={updateForm('pickupDeadline')}
       placeholder="YYYY-AA-GG"
       maxLength={10}
+      editable={!submitting}
       error={formErrors.pickupDeadline}
     />
   ) : (
@@ -49,8 +52,10 @@ export function PickupDateField({
       <Text style={local.label}>Son teslim alma tarihi</Text>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ disabled: submitting }}
         accessibilityLabel="Son teslim alma tarihi seç"
         accessibilityHint="Takvimi açar; bugün veya ileri bir tarih seçebilirsiniz."
+        disabled={submitting}
         onPress={openPickupDatePicker}
         style={local.input}
       >
@@ -82,6 +87,7 @@ export function PickupDateField({
           <View style={local.datePickerActions}>
             <Pressable
               accessibilityRole="button"
+              disabled={submitting}
               onPress={cancelIosDatePicker}
               style={local.datePickerAction}
             >
@@ -89,6 +95,7 @@ export function PickupDateField({
             </Pressable>
             <Pressable
               accessibilityRole="button"
+              disabled={submitting}
               onPress={confirmIosDatePicker}
               style={local.datePickerAction}
             >

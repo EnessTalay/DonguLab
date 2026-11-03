@@ -1,12 +1,22 @@
 import { Card } from '@/components/card';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { styles } from '@/components/screen';
 import { ActionButton, Feedback } from '@/components/ui';
 import { StatePanel } from '@/components/state-panel';
 import { ChoiceChips } from '@/components/choice-chips';
 import { materialLabels } from '@/lib/labels';
 import { istanbulDate as getTodayInIstanbul } from '@/lib/dates';
+import { router } from 'expo-router';
 import type { BusinessModel } from '../use-business';
+import { getAvailableStock, getListingAvailability } from '../listing-state';
+
+const availabilityLabels = {
+  closed: 'Kapalı',
+  expired: 'Süresi geçmiş',
+  'sold-out': 'Kullanılabilir stok yok',
+  'missing-thickness': 'Kalınlık bilgisi eksik · Talep alamaz',
+  available: 'Talebe açık',
+} as const;
 
 export function ListingList({
   model,
@@ -45,9 +55,23 @@ export function ListingList({
         value={listingFilter}
         onChange={setListingFilter}
         options={[
-          { value: 'all', label: 'Tümü' },
-          { value: 'available', label: 'Kullanılabilir' },
-          { value: 'expired', label: 'Süresi geçmiş' },
+          { value: 'all', label: `Tümü (${listings.length})` },
+          {
+            value: 'available',
+            label: `Talebe açık (${listings.filter((item) => getListingAvailability(item, getTodayInIstanbul()) === 'available').length})`,
+          },
+          {
+            value: 'out-of-stock',
+            label: `Stok yok (${listings.filter((item) => getListingAvailability(item, getTodayInIstanbul()) === 'sold-out').length})`,
+          },
+          {
+            value: 'expired',
+            label: `Süresi geçmiş (${listings.filter((item) => getListingAvailability(item, getTodayInIstanbul()) === 'expired').length})`,
+          },
+          {
+            value: 'closed',
+            label: `Kapalı (${listings.filter((item) => item.status === 'closed').length})`,
+          },
         ]}
       />
       <Feedback
@@ -87,13 +111,9 @@ export function ListingList({
           <Card key={listing.id} style={styles.card}>
             <Text style={styles.heading}>{listing.title}</Text>
             <Text style={styles.body}>
-              {listing.pickupDeadline < getTodayInIstanbul()
-                ? 'Süresi geçmiş'
-                : listing.quantityOnHand <= listing.quantityReserved
-                  ? 'Kullanılabilir stok yok'
-                  : listing.thicknessMm === null
-                    ? 'Talep için kalınlık bilgisi eksik'
-                    : 'Talebe açık'}
+              {availabilityLabels[
+                getListingAvailability(listing, getTodayInIstanbul())
+              ]}
             </Text>
             <Text style={styles.body}>
               {materialLabels[listing.materialType]} · {listing.widthMm} ×{' '}
@@ -103,13 +123,28 @@ export function ListingList({
                 : ` · ${listing.thicknessMm} mm kalınlık`}
             </Text>
             <Text style={styles.body}>
-              Toplam: {listing.quantityOnHand} · Ayrılmış:{' '}
-              {listing.quantityReserved} · Kullanılabilir:{' '}
-              {listing.quantityOnHand - listing.quantityReserved}
+              Toplam stok: {listing.quantityOnHand} · Rezerve stok:{' '}
+              {listing.quantityReserved} · Kullanılabilir stok:{' '}
+              {getAvailableStock(listing)}
             </Text>
             <Text style={styles.body}>
               {listing.region} · Son teslim alma: {listing.pickupDeadline}
             </Text>
+            {listing.description ? (
+              <Text style={styles.body}>{listing.description}</Text>
+            ) : null}
+            <View>
+              <ActionButton
+                title="İlan detayını aç"
+                secondary
+                onPress={() =>
+                  router.push({
+                    pathname: '/business/listings/[id]',
+                    params: { id: listing.id },
+                  })
+                }
+              />
+            </View>
           </Card>
         ))}
     </>

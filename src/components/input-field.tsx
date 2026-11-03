@@ -5,18 +5,21 @@ import {
   View,
   type TextInputProps,
 } from 'react-native';
+import type { Ref } from 'react';
 import { colors } from '@/theme/tokens';
 
 export type InputFieldProps = TextInputProps & {
   label: string;
   optional?: boolean;
   error?: string;
+  inputRef?: Ref<TextInput>;
 };
 
 export function InputField({
   label,
   optional = false,
   error,
+  inputRef,
   style,
   ...inputProps
 }: InputFieldProps) {
@@ -27,6 +30,7 @@ export function InputField({
         {optional ? ' (isteğe bağlı)' : ''}
       </Text>
       <TextInput
+        ref={inputRef}
         accessibilityLabel={label}
         {...inputProps}
         style={[local.input, style]}

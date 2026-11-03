@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { services } from '@/services';
-import type { MaterialType } from '@/types/domain';
+import type { Listing, MaterialType } from '@/types/domain';
 import type { BusinessResources } from './use-business-resources';
 import {
   emptyForm,
@@ -27,20 +27,30 @@ export function useListingForm({ loadListings }: BusinessResources) {
   const [submitting, setSubmitting] = useState(false);
   const [listingCreatedNeedsRefresh, setListingCreatedNeedsRefresh] =
     useState(false);
+  const [listingUpdatedNeedsRefresh, setListingUpdatedNeedsRefresh] =
+    useState(false);
+  const [editingListingId, setEditingListingId] = useState<string | null>(null);
+  const [updatedListing, setUpdatedListing] = useState<Listing | null>(null);
+  const mutationInFlight = useRef(false);
   const [feedback, setFeedback] = useState<{
     type: 'error' | 'success' | 'warning';
     message: string;
   } | null>(null);
   async function refreshListings() {
     const refreshed = await loadListings();
-    if (refreshed && listingCreatedNeedsRefresh) {
+    if (refreshed && (listingCreatedNeedsRefresh || listingUpdatedNeedsRefresh)) {
       setForm(emptyForm);
       setFormErrors({});
       setMaterialType('wood');
+      setEditingListingId(null);
+      setUpdatedListing(null);
       setListingCreatedNeedsRefresh(false);
+      setListingUpdatedNeedsRefresh(false);
       setFeedback({
         type: 'success',
-        message: 'İlanınız oluşturuldu ve ilan listeniz yenilendi.',
+        message: listingCreatedNeedsRefresh
+          ? 'İlanınız oluşturuldu ve ilan listeniz yenilendi.'
+          : 'İlanınız güncellendi ve ilan listeniz yenilendi.',
       });
     }
   }
@@ -60,6 +70,8 @@ export function useListingForm({ loadListings }: BusinessResources) {
       return Boolean(value.trim()) && value.trim().length <= 200;
     if (field === 'region')
       return Boolean(value.trim()) && value.trim().length <= 120;
+    if (field === 'description') return value.length <= 2000;
+    if (field === 'pickupInstructions') return value.length <= 1000;
     if (field === 'widthMm' || field === 'heightMm')
       return parsePositiveNumber(value) !== null;
     if (field === 'thicknessMm')
@@ -72,6 +84,33 @@ export function useListingForm({ loadListings }: BusinessResources) {
     }
 
     return isValidPickupDeadline(value);
+  }
+
+  function beginListingEdit(listing: Listing) {
+    setForm({
+      title: listing.title,
+      description: listing.description,
+      pickupInstructions: listing.pickupInstructions,
+      widthMm: String(listing.widthMm),
+      heightMm: String(listing.heightMm),
+      thicknessMm:
+        listing.thicknessMm === null ? '' : String(listing.thicknessMm),
+      quantityOnHand: String(listing.quantityOnHand),
+      region: listing.region,
+      pickupDeadline: listing.pickupDeadline,
+    });
+    setMaterialType(listing.materialType);
+    setFormErrors({});
+    setFeedback(null);
+    setEditingListingId(listing.id);
+  }
+
+  function cancelListingEdit() {
+    setEditingListingId(null);
+    setForm(emptyForm);
+    setFormErrors({});
+    setMaterialType('wood');
+    setFeedback(null);
   }
 
   function applyPickupDate(date: Date) {
@@ -115,7 +154,12 @@ export function useListingForm({ loadListings }: BusinessResources) {
   }
 
   async function submitListing() {
-    if (submitting || listingCreatedNeedsRefresh) return;
+    if (
+      mutationInFlight.current ||
+      listingCreatedNeedsRefresh ||
+      listingUpdatedNeedsRefresh
+    )
+      return;
     setFeedback(null);
     const validation = parseListingForm(form, materialType);
     setFormErrors(validation.errors);
@@ -123,27 +167,48 @@ export function useListingForm({ loadListings }: BusinessResources) {
       return;
     }
 
+    mutationInFlight.current = true;
     setSubmitting(true);
     try {
-      await services.createListing(validation.input);
-      setListingCreatedNeedsRefresh(true);
+      if (editingListingId) {
+        const updated = await services.updateListing(
+          editingListingId,
+          validation.input,
+        );
+        setUpdatedListing(updated);
+        setListingUpdatedNeedsRefresh(true);
+        setEditingListingId(null);
+      } else {
+        await services.createListing(validation.input);
+        setListingCreatedNeedsRefresh(true);
+      }
       const listingsRefreshed = await loadListings();
       if (listingsRefreshed) {
         setForm(emptyForm);
         setFormErrors({});
         setMaterialType('wood');
+        setEditingListingId(null);
+        setUpdatedListing(null);
         setListingCreatedNeedsRefresh(false);
-        setFeedback({ type: 'success', message: 'İlanınız oluşturuldu.' });
+        setListingUpdatedNeedsRefresh(false);
+        setFeedback({
+          type: 'success',
+          message: editingListingId
+            ? 'İlan bilgileriniz güncellendi.'
+            : 'İlanınız oluşturuldu.',
+        });
       } else {
         setFeedback({
           type: 'warning',
-          message:
-            'İlan oluşturuldu ancak İlanlarım yenilenemedi. İlan yeniden oluşturulmayacak; listeyi yenilemek için aşağıdaki düğmeyi kullanın.',
+          message: editingListingId
+            ? 'İlan güncellendi ancak İlanlarım yenilenemedi. Kaydedilen bilgiler gösteriliyor; listeyi yenilemek için aşağıdaki düğmeyi kullanın.'
+            : 'İlan oluşturuldu ancak İlanlarım yenilenemedi. İlan yeniden oluşturulmayacak; listeyi yenilemek için aşağıdaki düğmeyi kullanın.',
         });
       }
     } catch (error) {
       setFeedback({ type: 'error', message: getErrorMessage(error) });
     } finally {
+      mutationInFlight.current = false;
       setSubmitting(false);
     }
   }
@@ -159,6 +224,9 @@ export function useListingForm({ loadListings }: BusinessResources) {
     setIosSelectedDate,
     submitting,
     listingCreatedNeedsRefresh,
+    listingUpdatedNeedsRefresh,
+    editingListingId,
+    updatedListing,
     feedback,
     refreshListings,
     updateForm,
@@ -166,5 +234,7 @@ export function useListingForm({ loadListings }: BusinessResources) {
     cancelIosDatePicker,
     confirmIosDatePicker,
     submitListing,
+    beginListingEdit,
+    cancelListingEdit,
   };
 }

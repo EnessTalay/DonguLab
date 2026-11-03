@@ -32,6 +32,7 @@ export interface AppServices {
   signOut(): Promise<void>;
   getSession(): Promise<AppSession | null>;
   onAuthStateChange(listener: (session: AppSession | null) => void): () => void;
+  getListing(id: string): Promise<Listing | null>;
   listListings(): Promise<Listing[]>;
   listMyListings(): Promise<Listing[]>;
   createListing(input: CreateListingInput): Promise<Listing>;
@@ -45,8 +46,8 @@ export interface AppServices {
   listMyRequests(): Promise<StudentRequestView[]>;
   listIncomingRequests(): Promise<BusinessRequestView[]>;
   approveRequest(requestId: string): Promise<MaterialRequest>;
-  rejectRequest(requestId: string): Promise<MaterialRequest>;
-  cancelRequest(requestId: string): Promise<MaterialRequest>;
+  rejectRequest(requestId: string, reason?: string): Promise<MaterialRequest>;
+  cancelRequest(requestId: string, reason?: string): Promise<MaterialRequest>;
   issueDeliveryCode(requestId: string): Promise<DeliveryCode>;
   confirmDelivery(requestId: string, code: string): Promise<MaterialRequest>;
 }

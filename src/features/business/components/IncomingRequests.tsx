@@ -3,6 +3,7 @@ import { Card } from '@/components/card';
 import { DeliveryConfirmation } from './DeliveryConfirmation';
 import { StatusBadge } from '@/components/status-badge';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { styles } from '@/components/screen';
 import { ActionButton, Feedback } from '@/components/ui';
 import { StatePanel } from '@/components/state-panel';
@@ -10,9 +11,11 @@ import { ChoiceChips } from '@/components/choice-chips';
 import { formatDateTime as formatRequestExpiry } from '@/lib/dates';
 import { local } from '../styles';
 import type { BusinessModel } from '../use-business';
+import { requestsForListing } from '../listing-requests';
 
 export function IncomingRequests({
   model,
+  listingId,
 }: {
   model: Pick<
     BusinessModel,
@@ -33,6 +36,7 @@ export function IncomingRequests({
     | 'handleDeliveryConfirmation'
     | 'setSection'
   >;
+  listingId?: string;
 }) {
   const {
     requestFilter,
@@ -49,6 +53,12 @@ export function IncomingRequests({
     handleRequestAction,
     setSection,
   } = model;
+  const listingRequests = listingId
+    ? requestsForListing(incomingRequests, listingId)
+    : incomingRequests;
+  const listingVisibleRequests = listingId
+    ? requestsForListing(visibleRequests, listingId)
+    : visibleRequests;
   return (
     <>
       <ActionButton
@@ -87,21 +97,28 @@ export function IncomingRequests({
       />
       {!loadingRequests &&
         !requestListError &&
-        incomingRequests.length === 0 && (
+        listingRequests.length === 0 && (
           <StatePanel
             kind="empty"
-            title="Henüz gelen talep yok"
-            message="Öğrenciler ilanlarınıza talep gönderdiğinde burada görünecek."
+            title={
+              listingId ? 'Bu ilana gelen talep yok' : 'Henüz gelen talep yok'
+            }
+            message={
+              listingId
+                ? 'Öğrenciler bu ilana talep gönderdiğinde burada görünecek.'
+                : 'Öğrenciler ilanlarınıza talep gönderdiğinde burada görünecek.'
+            }
             action={{
-              label: 'İlanlarımı incele',
-              onPress: () => setSection('listings'),
+              label: listingId ? 'İlan detayına dön' : 'İlanlarımı incele',
+              onPress: () =>
+                listingId ? router.back() : setSection('listings'),
             }}
           />
         )}
       {!loadingRequests &&
         !requestListError &&
-        incomingRequests.length > 0 &&
-        visibleRequests.length === 0 && (
+      listingRequests.length > 0 &&
+      listingVisibleRequests.length === 0 && (
           <StatePanel
             kind="empty"
             title="Bu filtrede talep yok"
@@ -114,7 +131,7 @@ export function IncomingRequests({
         )}
       {!loadingRequests &&
         !requestListError &&
-        visibleRequests.map(
+      listingVisibleRequests.map(
           ({ request, listingTitle, projectName, expiresAt }) => {
             const pending = request.status === 'pending';
             const actionInProgress =
@@ -172,7 +189,7 @@ export function IncomingRequests({
                       accessibilityRole="button"
                       disabled={activeRequestAction !== null}
                       onPress={() =>
-                        void handleRequestAction(request.id, 'reject')
+                        router.push({ pathname: '/business/requests/detail/[id]', params: { id: request.id } })
                       }
                       style={[
                         local.actionButton,
@@ -184,7 +201,7 @@ export function IncomingRequests({
                       activeRequestAction?.action === 'reject' ? (
                         <ActivityIndicator color="#8b2f24" />
                       ) : (
-                        <Text style={local.rejectButtonText}>Reddet</Text>
+                        <Text style={local.rejectButtonText}>Gerekçeyle reddet</Text>
                       )}
                     </Pressable>
                   </View>
@@ -192,6 +209,11 @@ export function IncomingRequests({
                 {request.status === 'approved' && (
                   <DeliveryConfirmation requestId={request.id} model={model} />
                 )}
+                {request.rejectionReason ? <Text style={styles.body}>Ret gerekçesi: {request.rejectionReason}</Text> : null}
+                {request.cancellationReason ? <Text style={styles.body}>İptal gerekçesi: {request.cancellationReason}</Text> : null}
+                <ActionButton title="Talep detayını aç" secondary onPress={() => router.push({
+                  pathname: '/business/requests/detail/[id]', params: { id: request.id },
+                })} />
               </Card>
             );
           },

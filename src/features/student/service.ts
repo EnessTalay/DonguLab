@@ -5,16 +5,27 @@ import {
   type CreateNeedInput,
   type StudentRequestView as RequestView,
 } from '../../services';
+import type { Listing } from '../../types/domain';
 import { istanbulDate } from '../../services/validation';
 import { rankMatches } from './matching';
+import { needIsReadOnly } from './need-list';
+
+export { filterNeedsByStatus } from './need-list';
+export type { NeedListFilter } from './need-list';
 
 export type StudentRequestView = RequestView & { statusLabel: string };
 
 export const studentService = {
   createNeed: (input: CreateNeedInput) => services.createNeed(input),
   listMyNeeds: () => services.listMyNeeds(),
+  updateNeed: (id: string, input: CreateNeedInput) =>
+    services.updateNeed(id, input),
+  archiveNeed: (id: string) => services.archiveNeed(id),
   async getNeed(id: string) {
     return (await services.listMyNeeds()).find((need) => need.id === id);
+  },
+  async getListing(id: string): Promise<Listing | undefined> {
+    return (await services.getListing(id)) ?? undefined;
   },
   async listMatches(id: string) {
     const [needs, listings] = await Promise.all([
@@ -27,6 +38,11 @@ export const studentService = {
         'NOT_FOUND',
         'İhtiyaç kaydı bulunamadı. İhtiyaçlarım ekranına dönün.',
       );
+    if (needIsReadOnly(need))
+      throw new AppError(
+        'CONFLICT',
+        'Arşivlenmiş ihtiyaçlar için yeni ilan talebi oluşturulamaz.',
+      );
     return rankMatches(need, listings, istanbulDate());
   },
   createRequest: (needId: string, listingId: string) =>
@@ -37,6 +53,25 @@ export const studentService = {
       statusLabel: requestStatusLabels[item.request.status],
     }));
   },
+  async getRequest(id: string): Promise<StudentRequestView | undefined> {
+    const list = await this.listMyRequests();
+    return list.find((item) => item.request.id === id);
+  },
+  async getExistingRequestForListing(
+    listingId: string,
+    needId?: string,
+  ): Promise<StudentRequestView | undefined> {
+    const list = await this.listMyRequests();
+    return list.find(
+      (item) =>
+        item.request.listingId === listingId &&
+        (!needId || item.request.needId === needId) &&
+        ['pending', 'approved', 'delivered'].includes(item.request.status),
+    );
+  },
   issueDeliveryCode: (id: string) => services.issueDeliveryCode(id),
-  cancelRequest: (id: string) => services.cancelRequest(id),
+  cancelRequest: (id: string, reason?: string) => services.cancelRequest(id, reason),
+  async cancelRequestWithReason(id: string, reason?: string) {
+    return services.cancelRequest(id, reason);
+  },
 };

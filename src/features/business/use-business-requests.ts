@@ -34,6 +34,7 @@ export function useBusinessRequests({
   async function handleRequestAction(
     requestId: string,
     action: 'approve' | 'reject',
+    reason?: string,
   ) {
     if (activeRequestAction) return;
     setActiveRequestAction({ requestId, action });
@@ -42,7 +43,7 @@ export function useBusinessRequests({
       if (action === 'approve') {
         await services.approveRequest(requestId);
       } else {
-        await services.rejectRequest(requestId);
+        await services.rejectRequest(requestId, reason);
       }
 
       const refreshResult = await refreshRequestActionData();

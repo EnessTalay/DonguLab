@@ -17,6 +17,8 @@ export interface Listing extends MaterialSpec {
   id: string;
   businessId: string;
   title: string;
+  description: string;
+  pickupInstructions: string;
   quantityOnHand: number;
   quantityReserved: number;
   pickupDeadline: string;
@@ -40,4 +42,6 @@ export interface MaterialRequest {
   studentId: string;
   quantity: number;
   status: RequestStatus;
+  rejectionReason?: string | null;
+  cancellationReason?: string | null;
 }

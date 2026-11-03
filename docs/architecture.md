@@ -92,5 +92,6 @@ Supabase tarafında profiles, listings, needs, requests ve deliveries tabloları
 RLS, app_command, list_request_views ve refresh_reservations bulunur. Stok
 değişimleri atomiktir. Yeni profil öğrenci olur; işletme rolü yönetici tarafından atanır.
 
-Paket 2 ve 3 yeni alan, migration, bağımlılık veya iş kuralı eklemez. Düzenleme,
-arşivleme ve ilan kapatma işlemleri sonraki paketlerin kapsamıdır.
+Öğrenci ihtiyaç listesi aktif/arşivlenmiş filtrelerini sunar; ihtiyaç detayından
+mevcut `NeedForm` ile düzenleme ve onaylı arşivleme yapılır. İlan düzenleme ve
+kapatma işlemlerinin ürün arayüzü sonraki paketlerin kapsamındadır.

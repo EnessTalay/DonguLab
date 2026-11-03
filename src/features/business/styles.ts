@@ -3,6 +3,13 @@ import { StyleSheet } from 'react-native';
 
 export const local = StyleSheet.create({
   field: { gap: 7 },
+  formSection: {
+    gap: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  sectionHeading: { color: colors.heading, fontSize: 17, fontWeight: '700' },
   feedbackGroup: { gap: 8 },
   fieldError: { color: colors.error, fontSize: 13, lineHeight: 19 },
   label: { color: colors.heading, fontSize: 15, fontWeight: '600' },

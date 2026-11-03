@@ -1,7 +1,47 @@
 import type { CreateNeedInput } from '../../services/contracts';
+import type { Need } from '../../types/domain';
 import { istanbulDate, validDate } from '../../lib/dates';
 import { parseDecimalNumber, parsePositiveNumber } from '../../lib/numbers';
 import type { NeedDraft, NeedFormErrors } from './types';
+
+export function needToDraft(need: Need): NeedDraft {
+  return {
+    projectName: need.projectName,
+    materialType: need.materialType,
+    widthMm: String(need.widthMm),
+    heightMm: String(need.heightMm),
+    thicknessMm: need.thicknessMm === null ? '' : String(need.thicknessMm),
+    quantity: String(need.quantity),
+    region: need.region,
+    neededBy: need.neededBy,
+  };
+}
+
+export function needDraftHasChanges(
+  draft: NeedDraft,
+  baseline: NeedDraft,
+): boolean {
+  return Object.keys(draft).some(
+    (key) =>
+      draft[key as keyof NeedDraft] !== baseline[key as keyof NeedDraft],
+  );
+}
+
+export function firstNeedFormError(
+  errors: NeedFormErrors,
+): keyof NeedFormErrors | undefined {
+  const fieldOrder: (keyof NeedFormErrors)[] = [
+    'projectName',
+    'materialType',
+    'widthMm',
+    'heightMm',
+    'thicknessMm',
+    'quantity',
+    'region',
+    'neededBy',
+  ];
+  return fieldOrder.find((field) => errors[field]);
+}
 
 export function parseNeedForm(
   form: NeedDraft,

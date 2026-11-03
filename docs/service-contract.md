@@ -17,6 +17,7 @@ Yerel demo kayıt açmayı desteklemez, bellekteki örnek hesapları kullanır.
 | signOut | Oturumu kapatır |
 | getSession / onAuthStateChange | Sunucudaki profile göre oturum/rol sağlar |
 | listListings / listMyListings | Aktif keşif ilanları / kapalılar dahil işletmenin kendi ilanları |
+| getListing | Oturumla ID üzerinden ilan okur; kapalı ilanların geçmiş detaylarını korur |
 | createListing | id, businessId, quantityReserved ve active durumu sunucudan gelir |
 | createNeed / listMyNeeds | İhtiyaç kaydı / öğrencinin kendi ihtiyaçları; sahiplik sunucudadır |
 | updateListing / updateNeed | Sahibinin aktif, hiç talep geçmişi olmayan kaydını tam form girdisiyle düzenler |
@@ -30,6 +31,11 @@ Yerel demo kayıt açmayı desteklemez, bellekteki örnek hesapları kullanır.
 `AppError` code/message taşır. Kullanıcı mesajları ortak yardımcı veya bağlamsal
 özellik sözlüğüyle gösterilir. Başarılı mutasyondan sonra yenileme başarısızsa
 komutun başarısız olduğu söylenmemeli veya komut otomatik tekrarlanmamalıdır.
+
+`rejectRequest(id, reason?)` ve `cancelRequest(id, reason?)` en fazla 500 karakter
+gerekçe alır. Gerekçe durum geçişiyle aynı işlemde kaydedilir; talebin iki tarafı
+`request.rejectionReason` / `request.cancellationReason` üzerinden okur. Tekrar
+çağrı ilk gerekçeyi değiştirmez. Eski ve otomatik süre dolan kayıtlarda null gelir.
 
 ## Mevcut iş kuralları
 
