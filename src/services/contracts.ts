@@ -1,7 +1,7 @@
 import type { Listing, MaterialRequest, Need, Role } from '../types/domain';
 
-export type CreateListingInput = Omit<Listing, 'id' | 'businessId' | 'quantityReserved'>;
-export type CreateNeedInput = Omit<Need, 'id' | 'studentId'>;
+export type CreateListingInput = Omit<Listing, 'id' | 'businessId' | 'quantityReserved' | 'status'>;
+export type CreateNeedInput = Omit<Need, 'id' | 'studentId' | 'status'>;
 export interface Profile { id: string; role: Role; displayName: string }
 export interface AppSession { profile: Profile }
 export interface RequestView {
@@ -35,6 +35,10 @@ export interface AppServices {
   listListings(): Promise<Listing[]>;
   listMyListings(): Promise<Listing[]>;
   createListing(input: CreateListingInput): Promise<Listing>;
+  updateListing(id: string, input: CreateListingInput): Promise<Listing>;
+  closeListing(id: string): Promise<Listing>;
+  updateNeed(id: string, input: CreateNeedInput): Promise<Need>;
+  archiveNeed(id: string): Promise<Need>;
   createNeed(input: CreateNeedInput): Promise<Need>;
   listMyNeeds(): Promise<Need[]>;
   createRequest(needId: string, listingId: string): Promise<MaterialRequest>;

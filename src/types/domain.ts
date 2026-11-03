@@ -9,7 +9,11 @@ export interface MaterialSpec {
   region: string;
 }
 
+export type ListingStatus = 'active' | 'closed';
+export type NeedStatus = 'active' | 'archived';
+
 export interface Listing extends MaterialSpec {
+  status: ListingStatus;
   id: string;
   businessId: string;
   title: string;
@@ -19,6 +23,7 @@ export interface Listing extends MaterialSpec {
 }
 
 export interface Need extends MaterialSpec {
+  status: NeedStatus;
   id: string;
   studentId: string;
   projectName: string;

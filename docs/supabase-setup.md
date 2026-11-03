@@ -9,9 +9,12 @@ adımları yeni/boş projeler içindir; mevcut tablolara ilk migration'ı tekrar
 ## 1. Proje ve tablolar
 
 1. Supabase Dashboard'da yeni bir proje oluşturun.
-2. SQL Editor içinde `supabase/migrations/202611030001_core.sql` içeriğini bir kez
-   çalıştırın. Tablolar zaten mevcutsa migration'ı tekrar çalıştırmayın; ileride
-   değişiklikler için yeni migration dosyası ekleyin.
+2. SQL Editor içinde `supabase/migrations/202611030001_core.sql`, ardından
+   `supabase/migrations/202611030002_lifecycle.sql` içeriğini birer kez çalıştırın.
+   İlk migration zaten uygulanmış mevcut projede **yalnız ikinci dosyayı**
+   çalıştırın. Önce veritabanı yedeği alın; stok/talep tablolarını silmeyin ve
+   seed ile sıfırlamayın. İkinci migration eski kayıtları active başlatır.
+   Uygulamanın Paket 4 sürümünü ikinci migration'dan sonra çalıştırın.
 3. İsterseniz Supabase CLI ile mevcut migration klasörünü kullanabilirsiniz:
    `npx supabase init`, `npx supabase login`, `npx supabase link --project-ref REF`,
    `npx supabase db push`. CLI bir geliştirme aracıdır; mobil pakete eklenmez.
@@ -82,7 +85,7 @@ okuyamaz. Kod yalnız öğrenciye üretim cevabında gelir; kaybolursa yenilenir
 
 - İstemci tablo güncelleme/ekleme yetkisi almaz. Yazmalar `app_command` RPC'sinde
   auth.uid(), sunucudaki rol, sahiplik ve durum üzerinden doğrulanır.
-- Liste RLS politikaları açık ilanları oturum açmış kullanıcılara, ihtiyaçları
+- Liste RLS politikaları ilanları oturum açmış kullanıcılara, ihtiyaçları
   sahibine ve ilgili talebi alan işletmeye, talepleri iki tarafına açar.
 - Stok işlemlerinde önce ilan satırı, sonra talep kilitlenir. Aynı onay/iptal/
   teslim tekrarı stoğu ikinci kez değiştirmez. Onayda uygunluk yeniden kontrol edilir.

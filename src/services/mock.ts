@@ -12,7 +12,7 @@ export interface DemoStore {
 }
 export function createDemoStore(listings: readonly Listing[] = [], needs: readonly Need[] = []): DemoStore {
   // Independent test/demo state, never mutate exported fixture objects.
-  return { listings: copy([...listings]), needs: copy([...needs]), requests: [], sequence: 0 };
+  return { listings: copy(listings.map(l => ({ ...l, status: l.status ?? 'active' }))), needs: copy(needs.map(n => ({ ...n, status: n.status ?? 'active' }))), requests: [], sequence: 0 };
 }
 // All service DTOs contain only JSON values; also works in Expo Go's Hermes runtime.
 const copy = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -71,20 +71,64 @@ export function createDemoServices(store: DemoStore, clock = () => new Date()): 
     async signOut() { profile = null; notify(); },
     async getSession() { return session(); },
     onAuthStateChange(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    async listListings() { user(); expire(); return copy(store.listings); },
+    async listListings() { user(); expire(); return copy(store.listings.filter(l => l.status === 'active')); },
     async listMyListings() { const actor = user('business'); expire(); return copy(store.listings.filter(l => l.businessId === actor.id)); },
     async createListing(input) {
       const actor = user('business'); validateListing(input, istanbulDate(clock()));
       // Whitelist fields: malicious runtime input cannot set owner or reservations.
-      const listing: Listing = { id: id(), businessId: actor.id, title: input.title.trim(),
+      const listing: Listing = { id: id(), businessId: actor.id, status: 'active', title: input.title.trim(),
         materialType: input.materialType, widthMm: input.widthMm, heightMm: input.heightMm,
         thicknessMm: input.thicknessMm, region: input.region.trim(), pickupDeadline: input.pickupDeadline,
         quantityOnHand: input.quantityOnHand, quantityReserved: 0 };
       store.listings.push(listing); return copy(listing);
     },
+    async updateListing(listingId, input) {
+      const actor = user('business'); expire();
+      const listing = store.listings.find(l => l.id === listingId && l.businessId === actor.id);
+      if (!listing) throw new AppError('NOT_FOUND', 'İlan bulunamadı.');
+      if (listing.status !== 'active' || store.requests.some(r => r.listingId === listingId) || listing.quantityReserved > 0) {
+        throw new AppError('CONFLICT', 'Kapalı veya işlem geçmişi bulunan ilan düzenlenemez. Yeni ilan oluşturun.');
+      }
+      validateListing(input, istanbulDate(clock()));
+      Object.assign(listing, { title: input.title.trim(), materialType: input.materialType,
+        widthMm: input.widthMm, heightMm: input.heightMm, thicknessMm: input.thicknessMm,
+        quantityOnHand: input.quantityOnHand, region: input.region.trim(), pickupDeadline: input.pickupDeadline });
+      return copy(listing);
+    },
+    async closeListing(listingId) {
+      const actor = user('business'); expire();
+      const listing = store.listings.find(l => l.id === listingId && l.businessId === actor.id);
+      if (!listing) throw new AppError('NOT_FOUND', 'İlan bulunamadı.');
+      if (store.requests.some(r => r.listingId === listingId && ['pending', 'approved'].includes(r.status)) || listing.quantityReserved > 0) {
+        throw new AppError('CONFLICT', 'Önce açık talepleri sonuçlandırın.');
+      }
+      listing.status = 'closed'; return copy(listing);
+    },
+    async updateNeed(needId, input) {
+      const actor = user('student'); expire();
+      const need = store.needs.find(n => n.id === needId && n.studentId === actor.id);
+      if (!need) throw new AppError('NOT_FOUND', 'İhtiyaç bulunamadı.');
+      if (need.status !== 'active' || store.requests.some(r => r.needId === needId)) {
+        throw new AppError('CONFLICT', 'Arşivlenmiş veya işlem geçmişi bulunan ihtiyaç düzenlenemez. Yeni ihtiyaç oluşturun.');
+      }
+      validateNeed(input, istanbulDate(clock()));
+      Object.assign(need, { projectName: input.projectName.trim(), materialType: input.materialType,
+        widthMm: input.widthMm, heightMm: input.heightMm, thicknessMm: input.thicknessMm,
+        quantity: input.quantity, region: input.region.trim(), neededBy: input.neededBy });
+      return copy(need);
+    },
+    async archiveNeed(needId) {
+      const actor = user('student'); expire();
+      const need = store.needs.find(n => n.id === needId && n.studentId === actor.id);
+      if (!need) throw new AppError('NOT_FOUND', 'İhtiyaç bulunamadı.');
+      if (store.requests.some(r => r.needId === needId && ['pending', 'approved'].includes(r.status))) {
+        throw new AppError('CONFLICT', 'Önce açık talebi sonuçlandırın.');
+      }
+      need.status = 'archived'; return copy(need);
+    },
     async createNeed(input) {
       const actor = user('student'); validateNeed(input, istanbulDate(clock()));
-      const need: Need = { id: id(), studentId: actor.id, projectName: input.projectName.trim(),
+      const need: Need = { id: id(), studentId: actor.id, status: 'active', projectName: input.projectName.trim(),
         materialType: input.materialType, widthMm: input.widthMm, heightMm: input.heightMm,
         thicknessMm: input.thicknessMm, region: input.region.trim(), neededBy: input.neededBy, quantity: input.quantity };
       store.needs.push(need); return copy(need);

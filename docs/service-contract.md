@@ -16,9 +16,11 @@ Yerel demo kayıt açmayı desteklemez, bellekteki örnek hesapları kullanır.
 | signUp | Gerçek hesap oluşturur; confirmationRequired sonucu verir; rol göndermez |
 | signOut | Oturumu kapatır |
 | getSession / onAuthStateChange | Sunucudaki profile göre oturum/rol sağlar |
-| listListings / listMyListings | Oturumla görülebilen ilanlar / işletmenin kendi ilanları |
-| createListing | id, businessId, quantityReserved sunucudan gelir |
+| listListings / listMyListings | Aktif keşif ilanları / kapalılar dahil işletmenin kendi ilanları |
+| createListing | id, businessId, quantityReserved ve active durumu sunucudan gelir |
 | createNeed / listMyNeeds | İhtiyaç kaydı / öğrencinin kendi ihtiyaçları; sahiplik sunucudadır |
+| updateListing / updateNeed | Sahibinin aktif, hiç talep geçmişi olmayan kaydını tam form girdisiyle düzenler |
+| closeListing / archiveNeed | Açık talep yoksa sahibinin kaydını kapatır/arşivler; tekrar çağrı güvenlidir |
 | createRequest | needId ve listingId alır; miktar ihtiyaçtan okunur |
 | listMyRequests / listIncomingRequests | Talep, ilan/proje adı ve expiresAt; açık kod/hash içermez |
 | approveRequest / rejectRequest / cancelRequest | Rol, sahiplik, durum ve stok kontrolleriyle işlem |
@@ -54,8 +56,8 @@ komutun başarısız olduğu söylenmemeli veya komut otomatik tekrarlanmamalıd
 - `lib/`: paylaşılan tarih, sayı, etiket ve hata yardımcıları.
 
 Eski `ListingService.list()` / `demoListingService` kaldırıldı; tüketicileri yoktu.
-İlan/ihtiyaç düzenleme, kapatma, arşiv, fotoğraf, bildirim ve yönetici onay paneli
-bu sözleşmede henüz bulunmaz. Yeni işlemler önce iş kurallarıyla tasarlanmalıdır.
+İlan/ihtiyaç yaşam döngüsü ve düzenleme sınırları [Paket 4](package-4-data-rules.md)
+belgesindedir. Fotoğraf, bildirim ve yönetici onay paneli henüz bulunmaz.
 
 `npm test`, demo ve gerçek adaptör davranışlarını, gerçek migration üzerinde
 PGlite ile SQL/RLS kurallarını ve saf form/eşleşme/yardımcı fonksiyonlarını doğrular.

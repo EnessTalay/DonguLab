@@ -32,6 +32,9 @@ export function validateNeed(input: CreateNeedInput, today: string) {
 // Transaction guard for the demo adapter, NOT the UI matching/ranking engine.
 // SQL enforces the same baseline. Emine owns src/matching and its explanations.
 export function assertRequestEligible(need: Need, listing: Listing, today: string) {
+  if (need.status !== 'active' || listing.status !== 'active') {
+    throw new AppError('INCOMPATIBLE', 'Kapalı ilan veya arşivlenmiş ihtiyaç için talep oluşturulamaz.');
+  }
   validateNeed(need, today);
   validateListing(listing, today);
   const normalize = (s: string) => s.trim().toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ');

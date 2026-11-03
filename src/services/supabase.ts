@@ -8,10 +8,12 @@ interface DbMaterial {
   thickness_mm: number | null; region: string;
 }
 interface DbListing extends DbMaterial {
+  status: Listing['status'];
   id: string; business_id: string; title: string; quantity_on_hand: number;
   quantity_reserved: number; pickup_deadline: string;
 }
 interface DbNeed extends DbMaterial {
+  status: Need['status'];
   id: string; student_id: string; project_name: string; quantity: number; needed_by: string;
 }
 interface DbRequest {
@@ -22,10 +24,10 @@ const spec = (row: DbMaterial) => ({ materialType: row.material_type,
   widthMm: Number(row.width_mm), heightMm: Number(row.height_mm),
   thicknessMm: row.thickness_mm === null ? null : Number(row.thickness_mm), region: row.region });
 export const mapListing = (row: DbListing): Listing => ({ ...spec(row), id: row.id,
-  businessId: row.business_id, title: row.title, quantityOnHand: row.quantity_on_hand,
+  businessId: row.business_id, status: row.status, title: row.title, quantityOnHand: row.quantity_on_hand,
   quantityReserved: row.quantity_reserved, pickupDeadline: row.pickup_deadline });
 export const mapNeed = (row: DbNeed): Need => ({ ...spec(row), id: row.id,
-  studentId: row.student_id, projectName: row.project_name, quantity: row.quantity, neededBy: row.needed_by });
+  studentId: row.student_id, status: row.status, projectName: row.project_name, quantity: row.quantity, neededBy: row.needed_by });
 export const mapRequest = (row: DbRequest): MaterialRequest => ({ id: row.id,
   needId: row.need_id, listingId: row.listing_id, studentId: row.student_id, quantity: row.quantity, status: row.status });
 
@@ -117,7 +119,7 @@ export function createSupabaseServices(getClient: () => SupabaseClient): AppServ
     },
     async listListings() {
       await requireRole(); await refresh();
-      const { data, error } = await getClient().from('listings').select('*').order('created_at', { ascending: false });
+      const { data, error } = await getClient().from('listings').select('*').eq('status', 'active').order('created_at', { ascending: false });
       if (error) databaseError(error);
       return (data as DbListing[]).map(mapListing);
     },
@@ -130,6 +132,22 @@ export function createSupabaseServices(getClient: () => SupabaseClient): AppServ
     async createListing(input: CreateListingInput) {
       validateListing(input, istanbulDate());
       return mapListing(await command<DbListing>('create_listing', input));
+    },
+    async updateListing(id, input) {
+      await requireRole('business'); validateListing(input, istanbulDate());
+      return mapListing(await command<DbListing>('update_listing', { ...input, listingId: id }));
+    },
+    async closeListing(id) {
+      await requireRole('business');
+      return mapListing(await command<DbListing>('close_listing', { listingId: id }));
+    },
+    async updateNeed(id, input) {
+      await requireRole('student'); validateNeed(input, istanbulDate());
+      return mapNeed(await command<DbNeed>('update_need', { ...input, needId: id }));
+    },
+    async archiveNeed(id) {
+      await requireRole('student');
+      return mapNeed(await command<DbNeed>('archive_need', { needId: id }));
     },
     async createNeed(input: CreateNeedInput) {
       validateNeed(input, istanbulDate());

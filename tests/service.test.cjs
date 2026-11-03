@@ -5,10 +5,10 @@ const { createDemoServices, createDemoStore } = require('../src/services/mock.ts
 const { validDate } = require('../src/services/validation.ts');
 const { createSupabaseServices, mapListing } = require('../src/services/supabase.ts');
 const now = new Date('2030-01-01T12:00:00Z');
-const listing = { id: 'l1', businessId: 'demo-business', title: 'Ahşap', materialType: 'wood',
+const listing = { id: 'l1', status: 'active', businessId: 'demo-business', title: 'Ahşap', materialType: 'wood',
   widthMm: 600, heightMm: 400, thicknessMm: 6, region: 'İstanbul', quantityOnHand: 5,
   quantityReserved: 0, pickupDeadline: '2030-01-08' };
-const need = { id: 'n1', studentId: 'demo-student', projectName: 'Maket', materialType: 'wood',
+const need = { id: 'n1', status: 'active', studentId: 'demo-student', projectName: 'Maket', materialType: 'wood',
   widthMm: 300, heightMm: 200, thicknessMm: 6, region: 'İSTANBUL', quantity: 3, neededBy: '2030-01-04' };
 
 test('real registration trims email, sends no role, and respects confirmation', async () => {
@@ -88,9 +88,10 @@ test('missing thickness/incompatible dates rejected; strict date validation', as
   await assert.rejects(student.createNeed({ ...need, quantity: 1.2 }), { code: 'VALIDATION' });
 });
 test('real adapter maps database fields and turns RPC failures into AppError', async () => {
-  const row={id:'l1',business_id:'owner',title:'Ahşap',material_type:'wood',width_mm:'600',height_mm:400,
+  const row={id:'l1',status:'active',business_id:'owner',title:'Ahşap',material_type:'wood',width_mm:'600',height_mm:400,
     thickness_mm:null,quantity_on_hand:12,quantity_reserved:2,region:'İstanbul',pickup_deadline:'2030-01-08'};
   const mapped=mapListing(row);
+  assert.equal(mapped.status,'active');
   assert.equal(mapped.businessId,'owner'); assert.equal(mapped.widthMm,600); assert.equal(mapped.thicknessMm,null);
   const calls=[];
   const api=createSupabaseServices(() => ({ rpc: async (name,params) => {
@@ -98,6 +99,53 @@ test('real adapter maps database fields and turns RPC failures into AppError', a
   } }));
   await assert.rejects(api.createRequest('need-id','listing-id'), {name:'AppError',code:'OUT_OF_STOCK'});
   assert.deepEqual(calls,[{name:'app_command',params:{p_action:'create_request',p_payload:{needId:'need-id',listingId:'listing-id'}}}]);
+});
+
+test('demo lifecycle edits whitelist fields and enforce role and ownership', async () => {
+  const {student,business}=await setup();
+  await assert.rejects(student.closeListing('l1'),{code:'FORBIDDEN'});
+  await assert.rejects(business.archiveNeed('n1'),{code:'FORBIDDEN'});
+  await assert.rejects(business.updateListing('missing',listing),{code:'NOT_FOUND'});
+  const changed=await business.updateListing('l1',{...listing,title:'Yeni ilan',quantityOnHand:8,
+    businessId:'foreign',quantityReserved:7,status:'closed'});
+  assert.equal(changed.title,'Yeni ilan'); assert.equal(changed.quantityOnHand,8);
+  assert.equal(changed.businessId,'demo-business'); assert.equal(changed.quantityReserved,0); assert.equal(changed.status,'active');
+  const n=await student.updateNeed('n1',{...need,quantity:2,studentId:'foreign',status:'archived'});
+  assert.equal(n.quantity,2); assert.equal(n.studentId,'demo-student'); assert.equal(n.status,'active');
+  await assert.rejects(student.updateNeed('n1',{...need,quantity:1.5}),{code:'VALIDATION'});
+});
+
+test('demo open requests block lifecycle changes; cancellation preserves immutable history', async () => {
+  const {student,business}=await setup();
+  const r=await student.createRequest('n1','l1');
+  const blocked=async()=>{
+    await assert.rejects(business.updateListing('l1',listing),{code:'CONFLICT'});
+    await assert.rejects(student.updateNeed('n1',need),{code:'CONFLICT'});
+    await assert.rejects(business.closeListing('l1'),{code:'CONFLICT'});
+    await assert.rejects(student.archiveNeed('n1'),{code:'CONFLICT'});
+  };
+  await blocked(); await business.approveRequest(r.id); await blocked();
+  await student.cancelRequest(r.id);
+  await assert.rejects(business.updateListing('l1',listing),{code:'CONFLICT'});
+  await assert.rejects(student.updateNeed('n1',need),{code:'CONFLICT'});
+  await business.closeListing('l1'); await business.closeListing('l1');
+  await student.archiveNeed('n1'); await student.archiveNeed('n1');
+  assert.equal((await student.listListings()).length,0);
+  assert.equal((await business.listMyListings())[0].status,'closed');
+  assert.equal((await student.listMyNeeds())[0].status,'archived');
+  assert.equal((await student.listMyRequests())[0].request.status,'cancelled');
+  await assert.rejects(student.createRequest('n2','l1'),{code:'INCOMPATIBLE'});
+});
+
+test('demo archive releases expired reservations once; matching excludes lifecycle states', async () => {
+  const {student,business,advance}=await setup();
+  const r=await student.createRequest('n1','l1'); await business.approveRequest(r.id); advance();
+  await student.archiveNeed('n1'); await student.archiveNeed('n1');
+  const l=(await business.listMyListings())[0]; assert.equal(l.quantityReserved,0);
+  await assert.rejects(student.createRequest('n1','l1'),{code:'INCOMPATIBLE'});
+  const { matchListing }=require('../src/features/student/matching.ts');
+  assert.equal(matchListing({...need,status:'archived'},listing,'2030-01-01').eligible,false);
+  assert.equal(matchListing(need,{...listing,status:'closed'},'2030-01-01').eligible,false);
 });
 test('late auth profile result cannot restore a signed-out Supabase session', async () => {
   let callback, resolveSession;

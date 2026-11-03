@@ -11,6 +11,7 @@ export const demoListings: readonly Listing[] = [
   {
     id: 'wood-1',
     businessId: 'demo-business',
+    status: 'active',
     title: 'Atölyeden kontrplak parçaları',
     materialType: 'wood',
     widthMm: 600,
@@ -24,6 +25,7 @@ export const demoListings: readonly Listing[] = [
   {
     id: 'wood-2',
     businessId: 'demo-business',
+    status: 'active',
     title: 'Küçük ahşap parçalar',
     materialType: 'wood',
     widthMm: 100,
@@ -37,6 +39,7 @@ export const demoListings: readonly Listing[] = [
   {
     id: 'metal-1',
     businessId: 'demo-business',
+    status: 'active',
     title: 'Alüminyum levha',
     materialType: 'metal',
     widthMm: 600,
@@ -50,6 +53,7 @@ export const demoListings: readonly Listing[] = [
   {
     id: 'wood-3',
     businessId: 'demo-business',
+    status: 'active',
     title: 'Kalınlığı doğrulanacak ahşap',
     materialType: 'wood',
     widthMm: 600,
@@ -65,6 +69,7 @@ export const demoListings: readonly Listing[] = [
 export const demoNeed: Need = {
   id: 'demo-need',
   studentId: 'demo-student',
+  status: 'active',
   projectName: 'Mimari maket',
   materialType: 'wood',
   widthMm: 300,

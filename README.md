@@ -96,6 +96,7 @@ canlı e-posta akışında kabul testi yapıldığı anlamına gelmez.
 - [Paket 1: başlangıç envanteri ve eksikler](docs/package-1-baseline.md)
 - [Paket 2: kod yapısı ve yapılanlar](docs/package-2-structure.md)
 - [Paket 3: gezinme ve ekran durumları](docs/package-3-navigation.md)
+- [Paket 4: veri modeli ve iş kuralları](docs/package-4-data-rules.md)
 - [Önceki canlı altyapı doğrulaması](docs/live-supabase-verification.md) — tarihsel kayıt
 
 Expo API değişikliklerinde [SDK 57 belgelerini](https://docs.expo.dev/versions/v57.0.0/)
