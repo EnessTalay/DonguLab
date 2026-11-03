@@ -10,9 +10,14 @@ import { studentService } from '@/features/student/service';
 import { useFocusedResource } from '@/hooks/use-focused-resource';
 import { ChoiceChips } from '@/components/choice-chips';
 import { StatePanel } from '@/components/state-panel';
+import { requestsForNeed } from '@/features/student/need-list';
 
 export default function RequestsScreen() {
-  const { created } = useLocalSearchParams<{ created?: string }>();
+  const { created, needId } = useLocalSearchParams<{
+    created?: string;
+    needId?: string;
+  }>();
+  const routeNeedId = Array.isArray(needId) ? needId[0] : needId;
   const [deliveryCodes, setDeliveryCodes] = useState<
     Record<string, { code: string; expiresAt: string }>
   >({});
@@ -26,8 +31,11 @@ export default function RequestsScreen() {
     useCallback(() => studentService.listMyRequests(), []),
   );
   const requests = data ?? [];
+  const needRequests = routeNeedId
+    ? requestsForNeed(requests, routeNeedId)
+    : requests;
   const activeFilter = created ? 'active' : filter;
-  const visibleRequests = requests.filter(
+  const visibleRequests = needRequests.filter(
     (item) =>
       activeFilter === 'all' ||
       (item.request.status === 'pending' ||
@@ -112,6 +120,21 @@ export default function RequestsScreen() {
         Bekleyen talepler işletme onayı bekler. Onaylanan talebin teslim kodunu
         yalnız malzemeyi alırken işletmeyle paylaş.
       </Text>
+      {routeNeedId ? (
+        <StatePanel
+          kind="success"
+          title="Seçili ihtiyacın talepleri"
+          message="Bu listede yalnızca seçtiğin ihtiyaçla ilişkili talepler görünür."
+          secondaryAction={{
+            label: 'İhtiyaç detayına dön',
+            onPress: () =>
+              router.dismissTo({
+                pathname: '/student/needs/[id]',
+                params: { id: routeNeedId },
+              }),
+          }}
+        />
+      ) : null}
       <ChoiceChips
         value={activeFilter}
         onChange={(value) => {
@@ -140,11 +163,27 @@ export default function RequestsScreen() {
       {!loading && !error && visibleRequests.length === 0 ? (
         <StatePanel
           kind="empty"
-          title="Bu bölümde talep yok"
-          message="İhtiyacına uygun bir ilan seçerek talep oluşturabilirsin. Tamamlanan ve iptal edilen talepler Geçmiş bölümünde yer alır."
+          title={
+            routeNeedId
+              ? 'Bu ihtiyaç için bu bölümde talep yok'
+              : 'Bu bölümde talep yok'
+          }
+          message={
+            routeNeedId
+              ? activeFilter === 'active'
+                ? 'Bu ihtiyaç için bekleyen veya onaylanmış talep bulunmuyor.'
+                : 'Bu ihtiyaç için seçili durumda talep bulunmuyor.'
+              : 'İhtiyacına uygun bir ilan seçerek talep oluşturabilirsin. Tamamlanan ve iptal edilen talepler Geçmiş bölümünde yer alır.'
+          }
           action={{
-            label: 'İhtiyaçlarımı incele',
-            onPress: () => router.navigate('/student'),
+            label: routeNeedId ? 'İhtiyaç detayına dön' : 'İhtiyaçlarımı incele',
+            onPress: () =>
+              routeNeedId
+                ? router.dismissTo({
+                    pathname: '/student/needs/[id]',
+                    params: { id: routeNeedId },
+                  })
+                : router.navigate('/student'),
           }}
         />
       ) : (

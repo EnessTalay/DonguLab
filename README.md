@@ -48,7 +48,7 @@ Bu depo bağımsız APK/IPA veya mağaza sürümü içermez.
 - İşletme: yönetici tarafından rol atanmış hesap → ilan oluştur → talebi onayla/reddet → kodla teslim.
 - Stok sunucuda atomik işlemlerle yönetilir; istemci sahiplik veya rol belirlemez.
 - İlanlar, ihtiyaçlar, talepler, filtreler, hata/boş/yüklenme durumları ve genel bakış ekranları vardır.
-- İşletme başvuru paneli, ilan/ihtiyaç düzenleme ve arşivleme, fotoğraf ve bildirimler henüz yoktur.
+- Öğrenci ihtiyaç düzenleme/arşivleme akışı vardır. İşletme başvuru paneli, ilan düzenleme/kapatma, fotoğraf ve bildirimler henüz yoktur.
 
 Yerel demoda Giriş ekranındaki Demo Öğrenci / Demo İşletme düğmeleri kullanılır.
 Hesaplar uygulamadan çıkış/giriş yapılarak değiştirilebilir; aynı sayfadaki bellek

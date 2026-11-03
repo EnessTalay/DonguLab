@@ -12,7 +12,6 @@ export function ListingForm({
 }: {
   model: Pick<
     BusinessModel,
-    | 'loadingListings'
     | 'form'
     | 'formErrors'
     | 'setFormErrors'
@@ -20,6 +19,8 @@ export function ListingForm({
     | 'setMaterialType'
     | 'submitting'
     | 'listingCreatedNeedsRefresh'
+    | 'listingUpdatedNeedsRefresh'
+    | 'editingListingId'
     | 'feedback'
     | 'refreshListings'
     | 'updateForm'
@@ -30,10 +31,10 @@ export function ListingForm({
     | 'setIosSelectedDate'
     | 'cancelIosDatePicker'
     | 'confirmIosDatePicker'
+    | 'cancelListingEdit'
   >;
 }) {
   const {
-    loadingListings,
     form,
     formErrors,
     setFormErrors,
@@ -41,11 +42,16 @@ export function ListingForm({
     setMaterialType,
     submitting,
     listingCreatedNeedsRefresh,
+    listingUpdatedNeedsRefresh,
+    editingListingId,
     feedback,
     refreshListings,
     updateForm,
     submitListing,
+    cancelListingEdit,
   } = model;
+  const refreshPending =
+    listingCreatedNeedsRefresh || listingUpdatedNeedsRefresh;
   return (
     <>
       <Text style={styles.body}>
@@ -54,99 +60,148 @@ export function ListingForm({
       </Text>
 
       <View style={styles.card}>
-        <Text style={styles.heading}>Yeni ilan oluştur</Text>
-        <InputField
-          label="İlan başlığı"
-          value={form.title}
-          onChangeText={updateForm('title')}
-          placeholder="Örn. Atölyeden kontrplak parçaları"
-          maxLength={200}
-          error={formErrors.title}
-        />
+        <Text accessibilityRole="header" style={styles.heading}>
+          {editingListingId ? 'İlan bilgilerini düzenle' : 'Yeni ilan oluştur'}
+        </Text>
 
-        <View style={local.field}>
-          <Text style={local.label}>Malzeme türü</Text>
-          <View style={local.options}>
-            {materialOptions.map((option) => {
-              const selected = materialType === option.value;
-              return (
-                <Pressable
-                  key={option.value}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => {
-                    setMaterialType(option.value);
-                    setFormErrors((current) => ({
-                      ...current,
-                      materialType: undefined,
-                    }));
-                  }}
-                  style={[local.option, selected && local.selectedOption]}
-                >
-                  <Text
+        <View style={local.formSection}>
+          <Text accessibilityRole="header" style={local.sectionHeading}>
+            İlan bilgileri
+          </Text>
+          <InputField
+            label="İlan başlığı"
+            value={form.title}
+            onChangeText={updateForm('title')}
+            placeholder="Örn. Atölyeden kontrplak parçaları"
+            maxLength={200}
+            editable={!submitting}
+            error={formErrors.title}
+          />
+          <InputField
+            label="Açıklama (isteğe bağlı)"
+            value={form.description}
+            onChangeText={updateForm('description')}
+            placeholder="Malzemenin durumu ve kullanım bilgileri"
+            maxLength={2000}
+            multiline
+            editable={!submitting}
+            error={formErrors.description}
+          />
+          <View style={local.field}>
+            <Text style={local.label}>Malzeme türü</Text>
+            <View style={local.options}>
+              {materialOptions.map((option) => {
+                const selected = materialType === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected, disabled: submitting }}
+                    disabled={submitting}
+                    onPress={() => {
+                      setMaterialType(option.value);
+                      setFormErrors((current) => ({
+                        ...current,
+                        materialType: undefined,
+                      }));
+                    }}
                     style={[
-                      local.optionText,
-                      selected && local.selectedOptionText,
+                      local.option,
+                      selected && local.selectedOption,
+                      submitting && local.disabledButton,
                     ]}
                   >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
+                    <Text
+                      style={[
+                        local.optionText,
+                        selected && local.selectedOptionText,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {formErrors.materialType && (
+              <Text accessibilityRole="alert" style={local.fieldError}>
+                {formErrors.materialType}
+              </Text>
+            )}
           </View>
-          {formErrors.materialType && (
-            <Text accessibilityRole="alert" style={local.fieldError}>
-              {formErrors.materialType}
-            </Text>
-          )}
         </View>
 
-        <View style={local.row}>
-          <View style={local.halfField}>
-            <InputField
-              label="Genişlik (mm)"
-              value={form.widthMm}
-              onChangeText={updateForm('widthMm')}
-              keyboardType="decimal-pad"
-              error={formErrors.widthMm}
-            />
+        <View style={local.formSection}>
+          <Text accessibilityRole="header" style={local.sectionHeading}>
+            Ölçüler ve stok
+          </Text>
+          <View style={local.row}>
+            <View style={local.halfField}>
+              <InputField
+                label="Genişlik (mm)"
+                value={form.widthMm}
+                onChangeText={updateForm('widthMm')}
+                keyboardType="decimal-pad"
+                editable={!submitting}
+                error={formErrors.widthMm}
+              />
+            </View>
+            <View style={local.halfField}>
+              <InputField
+                label="Yükseklik (mm)"
+                value={form.heightMm}
+                onChangeText={updateForm('heightMm')}
+                keyboardType="decimal-pad"
+                editable={!submitting}
+                error={formErrors.heightMm}
+              />
+            </View>
           </View>
-          <View style={local.halfField}>
-            <InputField
-              label="Yükseklik (mm)"
-              value={form.heightMm}
-              onChangeText={updateForm('heightMm')}
-              keyboardType="decimal-pad"
-              error={formErrors.heightMm}
-            />
-          </View>
+          <InputField
+            label="Kalınlık (mm)"
+            value={form.thicknessMm}
+            onChangeText={updateForm('thicknessMm')}
+            keyboardType="decimal-pad"
+            optional
+            editable={!submitting}
+            error={formErrors.thicknessMm}
+          />
+          <InputField
+            label="Toplam stok"
+            value={form.quantityOnHand}
+            onChangeText={updateForm('quantityOnHand')}
+            placeholder="Adet"
+            keyboardType="number-pad"
+            editable={!submitting}
+            error={formErrors.quantityOnHand}
+          />
         </View>
-        <InputField
-          label="Kalınlık (mm)"
-          value={form.thicknessMm}
-          onChangeText={updateForm('thicknessMm')}
-          keyboardType="decimal-pad"
-          optional
-          error={formErrors.thicknessMm}
-        />
-        <InputField
-          label="Stok miktarı"
-          value={form.quantityOnHand}
-          onChangeText={updateForm('quantityOnHand')}
-          placeholder="Adet"
-          keyboardType="number-pad"
-          error={formErrors.quantityOnHand}
-        />
-        <InputField
-          label="Bölge"
-          value={form.region}
-          onChangeText={updateForm('region')}
-          placeholder="Örn. İstanbul"
-          maxLength={120}
-          error={formErrors.region}
-        />
-        <PickupDateField model={model} />
+
+        <View style={local.formSection}>
+          <Text accessibilityRole="header" style={local.sectionHeading}>
+            Teslim alma bilgileri
+          </Text>
+          <InputField
+            label="Bölge"
+            value={form.region}
+            onChangeText={updateForm('region')}
+            placeholder="Örn. İstanbul"
+            maxLength={120}
+            editable={!submitting}
+            error={formErrors.region}
+          />
+          <InputField
+            label="Teslim alma açıklaması (isteğe bağlı)"
+            value={form.pickupInstructions}
+            onChangeText={updateForm('pickupInstructions')}
+            placeholder="Adres veya randevu bilgisi"
+            maxLength={1000}
+            multiline
+            editable={!submitting}
+            error={formErrors.pickupInstructions}
+          />
+          <PickupDateField model={model} />
+        </View>
 
         {feedback && (
           <View style={local.feedbackGroup}>
@@ -159,7 +214,7 @@ export function ListingForm({
             {feedback.type === 'warning' && (
               <Pressable
                 accessibilityRole="button"
-                disabled={loadingListings}
+                disabled={submitting}
                 onPress={() => void refreshListings()}
                 style={local.retryButton}
               >
@@ -171,14 +226,28 @@ export function ListingForm({
 
         <ActionButton
           title={
-            listingCreatedNeedsRefresh ? 'İlan oluşturuldu' : 'İlanı oluştur'
+            submitting
+              ? 'Kaydediliyor…'
+              : refreshPending
+                ? 'İlan kaydedildi'
+                : editingListingId
+                  ? 'Değişiklikleri kaydet'
+                  : 'İlanı oluştur'
           }
-          disabled={submitting || listingCreatedNeedsRefresh}
+          disabled={submitting || refreshPending}
           loading={submitting}
           onPress={() => void submitListing()}
           style={local.submitButton}
           textStyle={local.submitText}
         />
+        {editingListingId && (
+          <ActionButton
+            title="Düzenlemeden vazgeç"
+            secondary
+            disabled={submitting}
+            onPress={cancelListingEdit}
+          />
+        )}
       </View>
     </>
   );

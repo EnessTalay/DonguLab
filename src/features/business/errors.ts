@@ -3,9 +3,9 @@ import { errorMessage } from '@/lib/errors';
 
 const listingMessages: Record<ErrorCode, string> = {
   UNAUTHENTICATED: 'Oturumunuz sona ermiş. Lütfen yeniden giriş yapın.',
-  FORBIDDEN: 'İlan oluşturma yetkiniz bulunmuyor.',
+  FORBIDDEN: 'Bu işlem için işletme hesabı yetkisi gerekiyor.',
   VALIDATION: 'İlan bilgilerini kontrol edip tekrar deneyin.',
-  NOT_FOUND: 'İşletme hesabı bulunamadı.',
+  NOT_FOUND: 'İlan veya işletme hesabı bulunamadı.',
   CONFLICT: 'İlan oluşturulamadı. Bilgileri kontrol edip tekrar deneyin.',
   OUT_OF_STOCK: 'Yeterli stok bulunmuyor.',
   INCOMPATIBLE: 'İlan bilgileri uygun değil.',

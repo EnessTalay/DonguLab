@@ -18,10 +18,18 @@ async function cmd(action, payload, id) {
   await actor(id);
   return (await db.query('select public.app_command($1,$2::jsonb) as result', [action, JSON.stringify(payload)])).rows[0].result;
 }
+async function listingDetails(action, payload, id) {
+  await actor(id);
+  return (await db.query(
+    'select public.listing_details_command($1,$2::jsonb) as result',
+    [action, JSON.stringify(payload)],
+  )).rows[0].result;
+}
 const ok = result => { assert.equal(result.ok, true, JSON.stringify(result)); return result.data; };
 const rejected = (result, code) => { assert.equal(result.ok, false); assert.equal(result.error.code, code); };
 const future = () => { const d = new Date(); d.setUTCDate(d.getUTCDate() + 5); return d.toISOString().slice(0,10); };
 const listingInput = () => ({ title: 'Test ahşap', materialType: 'wood', widthMm: 600, heightMm: 400,
+  description: 'Temiz test ahşabı.', pickupInstructions: 'Atölyeden randevuyla teslim alın.',
   thicknessMm: 6, quantityOnHand: 5, region: 'İstanbul', pickupDeadline: future() });
 const needInput = () => ({ projectName: 'Test maket', materialType: 'wood', widthMm: 300, heightMm: 200,
   thicknessMm: 6, quantity: 3, region: 'İSTANBUL', neededBy: future() });
@@ -70,6 +78,15 @@ test('SQL upgrade preserves existing approved requests, stock and active default
   ok(await cmd('archive_need',{needId:legacy.n.id},S));
   ok(await cmd('close_listing',{listingId:legacy.l.id},B));
   assert.deepEqual(await stock(legacy.l.id),{quantity_on_hand:2,quantity_reserved:0});
+  await db.exec('reset role');
+  assert.equal(
+    (await db.query('select status from public.requests where id=$1', [legacy.r.id])).rows[0].status,
+    'delivered',
+  );
+  assert.equal(
+    (await db.query('select count(*)::int as count from public.deliveries where request_id=$1', [legacy.r.id])).rows[0].count,
+    1,
+  );
 });
 
 test('SQL role assignment ignores user metadata; RLS and grants prevent escalation', async () => {
@@ -191,6 +208,73 @@ test('SQL lifecycle commands enforce ownership and keep server-owned fields immu
   assert.equal((await stock(l.id)).quantity_on_hand,8);
 });
 
+test('SQL listing details are owner-only, validated, atomic with stock rules, and preserve requests', async () => {
+  const l = ok(await listingDetails('create_listing', {
+    ...listingInput(),
+    description: 'Kullanılabilir ahşap parçalar.',
+    pickupInstructions: 'Randevuyla atölyeden teslim alın.',
+  }, B));
+  assert.equal(l.description, 'Kullanılabilir ahşap parçalar.');
+  assert.equal(l.pickup_instructions, 'Randevuyla atölyeden teslim alın.');
+  rejected(await listingDetails('update_listing', {
+    ...listingInput(),
+    listingId: l.id,
+    description: 'Başkasının ilanı',
+  }, OTHER_B), 'NOT_FOUND');
+  rejected(await listingDetails('create_listing', {
+    ...listingInput(),
+    description: 'a'.repeat(2001),
+  }, B), 'VALIDATION');
+  rejected(await listingDetails('create_listing', {
+    ...listingInput(),
+    pickupInstructions: 'a'.repeat(1001),
+  }, B), 'VALIDATION');
+
+  const changed = ok(await listingDetails('update_listing', {
+    ...listingInput(),
+    listingId: l.id,
+    title: 'Güncellenen başlık',
+    description: 'Yeni açıklama',
+    pickupInstructions: 'Yeni teslim bilgisi',
+    quantityOnHand: 8,
+  }, B));
+  assert.equal(changed.description, 'Yeni açıklama');
+  assert.equal(changed.pickup_instructions, 'Yeni teslim bilgisi');
+  assert.equal(changed.quantity_on_hand, 8);
+
+  const n = ok(await cmd('create_need', needInput(), S));
+  const r = ok(await cmd('create_request', { needId: n.id, listingId: l.id }, S));
+  ok(await cmd('approve_request', { requestId: r.id }, B));
+  rejected(await listingDetails('update_listing', {
+    ...listingInput(),
+    listingId: l.id,
+    quantityOnHand: 2,
+    description: 'Bu değişiklik uygulanmamalı.',
+  }, B), 'CONFLICT');
+  assert.deepEqual(await stock(l.id), {
+    quantity_on_hand: 8,
+    quantity_reserved: 3,
+  });
+  rejected(await cmd('close_listing', { listingId: l.id }, B), 'CONFLICT');
+  ok(await cmd('cancel_request', { requestId: r.id }, S));
+  assert.equal(ok(await cmd('close_listing', { listingId: l.id }, B)).status, 'closed');
+  await actor(B);
+  const preserved = await db.query(
+    'select status from public.requests where id = $1',
+    [r.id],
+  );
+  assert.equal(preserved.rows[0].status, 'cancelled');
+  const details = await db.query(
+    'select description, pickup_instructions from public.listings where id = $1',
+    [l.id],
+  );
+  assert.deepEqual(details.rows[0], {
+    description: 'Yeni açıklama',
+    pickup_instructions: 'Yeni teslim bilgisi',
+  });
+  rejected(await cmd('create_request', { needId: n.id, listingId: l.id }, S), 'INCOMPATIBLE');
+});
+
 test('SQL request history freezes edits; open requests prevent closing and archiving', async () => {
   const {l,n,r}=await fixture();
   const blocked=async()=>{
@@ -222,6 +306,22 @@ test('SQL closed/archived records reject new requests and updates independently'
   ok(await cmd('archive_need',{needId:n.id},S));
   rejected(await cmd('create_request',{needId:n.id,listingId:l2.id},S),'INCOMPATIBLE');
   rejected(await cmd('update_need',{...needInput(),needId:n.id},S),'CONFLICT');
+
+  const expiredListing = ok(await cmd('create_listing', listingInput(), B));
+  const anotherNeed = ok(await cmd('create_need', needInput(), S));
+  await db.exec('reset role');
+  await db.query(
+    "update public.listings set pickup_deadline='2020-01-01' where id=$1",
+    [expiredListing.id],
+  );
+  rejected(
+    await cmd(
+      'create_request',
+      { needId: anotherNeed.id, listingId: expiredListing.id },
+      S,
+    ),
+    'INCOMPATIBLE',
+  );
 });
 
 test('SQL archive expires reservations once and preserves request history', async () => {

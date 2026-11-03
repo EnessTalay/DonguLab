@@ -29,8 +29,9 @@ işletme akışlarının tutarlılığına odaklanır.
 
 ## Bilinen ve henüz uygulanmayan ürün eksikleri
 
-- İlan/ ihtiyaç düzenleme, arşivleme ve silme: mevcut sunucu sözleşmesinde yok.
-  Durum ve stok kurallarıyla birlikte tasarlanmalı; yalnız UI düğmesi eklemek yeterli değil.
+- Öğrenci ihtiyaç düzenleme/arşivleme arayüzü Paket 5/Aşama 1 ile eklendi.
+  İlan düzenleme/kapatma arayüzü ve kayıt silme akışı halen yok; lifecycle ve
+  stok kuralları nedeniyle yalnızca UI düğmesi eklemek yeterli değildir.
 - Ayrı ilan detay ekranı, ilan açıklaması ve fotoğraflar için veri modeli genişlemesi.
 - Teslim yeri, saat aralığı ve taraflar arasında iletişim bilgisi paylaşımı için ürün kararı.
 - İhtiyaç tarihi ile son teslim alma tarihi arasındaki iş kuralının netleştirilmesi.

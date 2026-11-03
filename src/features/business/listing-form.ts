@@ -6,6 +6,8 @@ import { isValidPickupDeadline } from './pickup-date';
 
 export const emptyForm = {
   title: '',
+  description: '',
+  pickupInstructions: '',
   widthMm: '',
   heightMm: '',
   thicknessMm: '',
@@ -24,6 +26,8 @@ export function parseListingForm(
   materialType: MaterialType,
 ): { input: CreateListingInput | null; errors: ListingFormErrors } {
   const title = form.title.trim();
+  const description = form.description.trim();
+  const pickupInstructions = form.pickupInstructions.trim();
   const region = form.region.trim();
   const widthMm = parsePositiveNumber(form.widthMm);
   const heightMm = parsePositiveNumber(form.heightMm);
@@ -33,7 +37,13 @@ export function parseListingForm(
   const quantityOnHand = Number(form.quantityOnHand.trim());
   const errors: ListingFormErrors = {};
 
-  if (!title) errors.title = 'İlan başlığı zorunludur.';
+  if (!title || title.length > 200)
+    errors.title = 'İlan başlığı 1–200 karakter olmalıdır.';
+  if (description.length > 2000)
+    errors.description = 'Açıklama en fazla 2000 karakter olabilir.';
+  if (pickupInstructions.length > 1000)
+    errors.pickupInstructions =
+      'Teslim alma bilgisi en fazla 1000 karakter olabilir.';
   if (!materialOptions.some((option) => option.value === materialType)) {
     errors.materialType = 'Lütfen geçerli bir malzeme türü seçin.';
   }
@@ -52,7 +62,8 @@ export function parseListingForm(
   ) {
     errors.quantityOnHand = 'Stok miktarı pozitif bir tam sayı olmalıdır.';
   }
-  if (!region) errors.region = 'Bölge zorunludur.';
+  if (!region || region.length > 120)
+    errors.region = 'Bölge 1–120 karakter olmalıdır.';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.pickupDeadline)) {
     errors.pickupDeadline =
       'Son teslim alma tarihini YYYY-AA-GG biçiminde girin.';
@@ -67,6 +78,8 @@ export function parseListingForm(
   return {
     input: {
       title,
+      description,
+      pickupInstructions,
       materialType,
       widthMm,
       heightMm,

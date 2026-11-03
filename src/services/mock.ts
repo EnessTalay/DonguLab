@@ -12,7 +12,9 @@ export interface DemoStore {
 }
 export function createDemoStore(listings: readonly Listing[] = [], needs: readonly Need[] = []): DemoStore {
   // Independent test/demo state, never mutate exported fixture objects.
-  return { listings: copy(listings.map(l => ({ ...l, status: l.status ?? 'active' }))), needs: copy(needs.map(n => ({ ...n, status: n.status ?? 'active' }))), requests: [], sequence: 0 };
+  return { listings: copy(listings.map(l => ({ ...l, description: l.description ?? '',
+    pickupInstructions: l.pickupInstructions ?? '', status: l.status ?? 'active' }))),
+    needs: copy(needs.map(n => ({ ...n, status: n.status ?? 'active' }))), requests: [], sequence: 0 };
 }
 // All service DTOs contain only JSON values; also works in Expo Go's Hermes runtime.
 const copy = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -77,6 +79,7 @@ export function createDemoServices(store: DemoStore, clock = () => new Date()): 
       const actor = user('business'); validateListing(input, istanbulDate(clock()));
       // Whitelist fields: malicious runtime input cannot set owner or reservations.
       const listing: Listing = { id: id(), businessId: actor.id, status: 'active', title: input.title.trim(),
+        description: input.description.trim(), pickupInstructions: input.pickupInstructions.trim(),
         materialType: input.materialType, widthMm: input.widthMm, heightMm: input.heightMm,
         thicknessMm: input.thicknessMm, region: input.region.trim(), pickupDeadline: input.pickupDeadline,
         quantityOnHand: input.quantityOnHand, quantityReserved: 0 };
@@ -91,6 +94,7 @@ export function createDemoServices(store: DemoStore, clock = () => new Date()): 
       }
       validateListing(input, istanbulDate(clock()));
       Object.assign(listing, { title: input.title.trim(), materialType: input.materialType,
+        description: input.description.trim(), pickupInstructions: input.pickupInstructions.trim(),
         widthMm: input.widthMm, heightMm: input.heightMm, thicknessMm: input.thicknessMm,
         quantityOnHand: input.quantityOnHand, region: input.region.trim(), pickupDeadline: input.pickupDeadline });
       return copy(listing);

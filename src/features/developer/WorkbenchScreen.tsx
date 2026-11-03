@@ -153,6 +153,8 @@ export default function WorkbenchScreen() {
               () =>
                 services.createListing({
                   title: 'Altyapı test ahşabı',
+                  description: '',
+                  pickupInstructions: '',
                   materialType: 'wood',
                   widthMm: 600,
                   heightMm: 400,

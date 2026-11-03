@@ -9,7 +9,8 @@ interface DbMaterial {
 }
 interface DbListing extends DbMaterial {
   status: Listing['status'];
-  id: string; business_id: string; title: string; quantity_on_hand: number;
+  id: string; business_id: string; title: string; description?: string;
+  pickup_instructions?: string; quantity_on_hand: number;
   quantity_reserved: number; pickup_deadline: string;
 }
 interface DbNeed extends DbMaterial {
@@ -24,7 +25,9 @@ const spec = (row: DbMaterial) => ({ materialType: row.material_type,
   widthMm: Number(row.width_mm), heightMm: Number(row.height_mm),
   thicknessMm: row.thickness_mm === null ? null : Number(row.thickness_mm), region: row.region });
 export const mapListing = (row: DbListing): Listing => ({ ...spec(row), id: row.id,
-  businessId: row.business_id, status: row.status, title: row.title, quantityOnHand: row.quantity_on_hand,
+  businessId: row.business_id, status: row.status, title: row.title,
+  description: row.description ?? '', pickupInstructions: row.pickup_instructions ?? '',
+  quantityOnHand: row.quantity_on_hand,
   quantityReserved: row.quantity_reserved, pickupDeadline: row.pickup_deadline });
 export const mapNeed = (row: DbNeed): Need => ({ ...spec(row), id: row.id,
   studentId: row.student_id, status: row.status, projectName: row.project_name, quantity: row.quantity, neededBy: row.needed_by });
@@ -71,6 +74,11 @@ export function createSupabaseServices(getClient: () => SupabaseClient): AppServ
     return envelope.data;
   }
   const command = <T,>(action: string, payload: object) => rpc<T>('app_command', { p_action: action, p_payload: payload });
+  const listingCommand = async (action: 'create_listing' | 'update_listing', payload: object) =>
+    mapListing(await rpc<DbListing>('listing_details_command', {
+      p_action: action,
+      p_payload: payload,
+    }));
   const requestCommand = async (action: string, requestId: string, code?: string) =>
     mapRequest(await command<DbRequest>(action, { requestId, ...(code === undefined ? {} : { code }) }));
   async function refresh() {
@@ -131,11 +139,11 @@ export function createSupabaseServices(getClient: () => SupabaseClient): AppServ
     },
     async createListing(input: CreateListingInput) {
       validateListing(input, istanbulDate());
-      return mapListing(await command<DbListing>('create_listing', input));
+      return listingCommand('create_listing', input);
     },
     async updateListing(id, input) {
       await requireRole('business'); validateListing(input, istanbulDate());
-      return mapListing(await command<DbListing>('update_listing', { ...input, listingId: id }));
+      return listingCommand('update_listing', { ...input, listingId: id });
     },
     async closeListing(id) {
       await requireRole('business');

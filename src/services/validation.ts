@@ -15,9 +15,11 @@ function material(input: MaterialSpec) {
 export function validateListing(input: CreateListingInput, today: string) {
   material(input);
   if (typeof input.title !== 'string' || !input.title.trim() || input.title.trim().length > 200 ||
+    typeof input.description !== 'string' || input.description.length > 2000 ||
+    typeof input.pickupInstructions !== 'string' || input.pickupInstructions.length > 1000 ||
     !Number.isSafeInteger(input.quantityOnHand) || input.quantityOnHand <= 0 || input.quantityOnHand > 2147483647 ||
     !validDate(input.pickupDeadline) || input.pickupDeadline < today) {
-    throw new AppError('VALIDATION', 'İlan başlığı, adet ve son teslim tarihini kontrol edin.');
+    throw new AppError('VALIDATION', 'İlan başlığı, açıklama, teslim alma bilgisi, adet ve son teslim tarihini kontrol edin.');
   }
 }
 export function validateNeed(input: CreateNeedInput, today: string) {

@@ -66,9 +66,10 @@ talep kilitleri bundan sonra alınır. İlan/talep işlemleri ihtiyaç kilidi al
 İhtiyacı kilitlemeden önce genel rezervasyon temizliği çağrılmaması kilit
 sırasının ters dönmesini önler.
 
-Demo ve Supabase adaptörleri aynı AppServices sözleşmesini uygular. Düzenleme,
-kapatma ve arşivleme düğmeleri öğrenci/işletme ekranlarının Paket 5 ve 6
-çalışmalarına bırakıldı; bu paket onların veri ve yetki altyapısını sağlar.
+Demo ve Supabase adaptörleri aynı AppServices sözleşmesini uygular. Bu pakette
+öğrenci/işletme ekranları için lifecycle veri ve yetki altyapısı sağlandı.
+Paket 5/Aşama 1 öğrenci ihtiyaç düzenleme/arşivleme arayüzünü bu sözleşmeye
+bağlar; işletme ilan düzenleme/kapatma arayüzü sonraki aşamanın kapsamındadır.
 
 ## Doğrulama ve dağıtım sınırı
 

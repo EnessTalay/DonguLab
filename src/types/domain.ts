@@ -17,6 +17,8 @@ export interface Listing extends MaterialSpec {
   id: string;
   businessId: string;
   title: string;
+  description: string;
+  pickupInstructions: string;
   quantityOnHand: number;
   quantityReserved: number;
   pickupDeadline: string;

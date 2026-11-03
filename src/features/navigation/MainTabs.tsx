@@ -63,10 +63,11 @@ export default function MainTabs() {
       </Tabs.Protected>
       <Tabs.Protected guard={session?.profile.role === 'business'}>
         <Tabs.Screen
-          name="business/index"
+          name="business"
           options={{
             title: 'İşletmem',
             tabBarAccessibilityLabel: 'İşletmem',
+            headerShown: false,
             tabBarIcon: ({ color }) => (
               <Text style={{ color, fontSize: 20 }}>▤</Text>
             ),

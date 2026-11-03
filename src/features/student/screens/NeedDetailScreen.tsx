@@ -2,14 +2,17 @@ import { AppError } from '@/services/contracts';
 import { colors } from '@/theme/tokens';
 import { Card } from '@/components/card';
 import { materialLabels } from '@/lib/labels';
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ActionButton, Feedback } from '@/components/ui';
 import { StatePanel } from '@/components/state-panel';
 import { useFocusedResource } from '@/hooks/use-focused-resource';
 import { Screen } from '@/components/screen';
+import { NeedForm } from '@/features/student/components/NeedForm';
 import { studentService } from '@/features/student/service';
+import type { Need } from '@/types/domain';
+import { needIsReadOnly, requestsForNeed } from '@/features/student/need-list';
 
 export default function NeedDetailScreen() {
   const { id, created } = useLocalSearchParams<{
@@ -36,8 +39,78 @@ export default function NeedDetailScreen() {
       return item;
     }, [routeId]),
   );
+  const {
+    data: requestData,
+    loading: requestsLoading,
+    error: requestsError,
+    reload: reloadRequests,
+  } = useFocusedResource(
+    useCallback(() => studentService.listMyRequests(), []),
+  );
+  const relatedRequests = routeId
+    ? requestsForNeed(requestData ?? [], routeId)
+    : [];
+  const [editing, setEditing] = useState(false);
+  const [updatedNeed, setUpdatedNeed] = useState<Need | null>(null);
+  const [editNotice, setEditNotice] = useState('');
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveError, setArchiveError] = useState('');
+  const archiveInFlight = useRef(false);
+  const displayedNeed =
+    updatedNeed?.id === routeId
+      ? updatedNeed
+      : need?.id === routeId
+        ? need
+        : null;
 
-  if (loading || error || !need) {
+  const refreshUpdatedNeed = async () => {
+    if (await reload()) {
+      setUpdatedNeed(null);
+      setEditNotice('İhtiyaç bilgileri güncellendi.');
+    }
+  };
+
+  const handleUpdate = async (
+    input: Parameters<typeof studentService.updateNeed>[1],
+  ) => {
+    if (!routeId) return;
+    const updated = await studentService.updateNeed(routeId, input);
+    setUpdatedNeed(updated);
+    setEditing(false);
+    setEditNotice('');
+    if (await reload()) {
+      setUpdatedNeed(null);
+      setEditNotice('İhtiyaç bilgileri güncellendi.');
+    } else {
+      setEditNotice(
+        'İhtiyaç güncellendi ancak sunucudan yeniden yüklenemedi. Gösterilen bilgiler kaydedilen son bilgilerdir.',
+      );
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!routeId || archiveInFlight.current) return;
+    archiveInFlight.current = true;
+    setArchiving(true);
+    setArchiveError('');
+    try {
+      await studentService.archiveNeed(routeId);
+      router.dismissTo({ pathname: '/student', params: { archived: '1' } });
+    } catch (archiveFailure) {
+      setArchiveError(
+        archiveFailure instanceof Error
+          ? archiveFailure.message
+          : 'İhtiyaç arşivlenemedi. Lütfen yeniden deneyin.',
+      );
+      setConfirmArchive(false);
+    } finally {
+      archiveInFlight.current = false;
+      setArchiving(false);
+    }
+  };
+
+  if ((loading && !updatedNeed) || (!displayedNeed && (error || !loading))) {
     return (
       <Screen title="İhtiyaç detayı">
         <Feedback
@@ -55,8 +128,10 @@ export default function NeedDetailScreen() {
     );
   }
 
+  if (!displayedNeed) return null;
+
   return (
-    <Screen title={need.projectName}>
+    <Screen title={displayedNeed.projectName}>
       {created === '1' && (
         <StatePanel
           kind="success"
@@ -64,39 +139,180 @@ export default function NeedDetailScreen() {
           message="Şimdi ölçülerine uygun malzeme ilanlarını inceleyebilirsin."
         />
       )}
-      <Card style={styles.card}>
-        <Text style={styles.heading}>İhtiyaç özeti</Text>
-        <Text style={styles.body}>
-          Malzeme: {materialLabels[need.materialType]}
-        </Text>
-        <Text style={styles.body}>
-          Ölçü: {need.widthMm} × {need.heightMm} mm
-        </Text>
-        <Text style={styles.body}>
-          Kalınlık:{' '}
-          {need.thicknessMm === null
-            ? 'Doğrulanacak'
-            : `${need.thicknessMm} mm`}
-        </Text>
-        <Text style={styles.body}>Adet: {need.quantity}</Text>
-        <Text style={styles.body}>Bölge: {need.region}</Text>
-        <Text style={styles.body}>İhtiyaç tarihi: {need.neededBy}</Text>
-      </Card>
+      {editNotice ? (
+        <StatePanel
+          kind="success"
+          title="Düzenleme tamamlandı"
+          message={editNotice}
+          action={
+            editNotice.startsWith('İhtiyaç güncellendi ancak')
+              ? {
+                  label: 'Bilgileri yenile',
+                  onPress: () => void refreshUpdatedNeed(),
+                }
+              : undefined
+          }
+        />
+      ) : null}
+      {editing && !needIsReadOnly(displayedNeed) ? (
+        <NeedForm
+          key={displayedNeed.id}
+          initialNeed={displayedNeed}
+          submitLabel="Değişiklikleri kaydet"
+          onCancel={() => setEditing(false)}
+          onSubmit={handleUpdate}
+        />
+      ) : (
+        <>
+          {needIsReadOnly(displayedNeed) && (
+            <StatePanel
+              kind="success"
+              title="Arşivlenmiş ihtiyaç"
+              message="Bu ihtiyaç geçmiş kayıtları korunarak saklanıyor. Düzenlenemez veya yeni talep oluşturamaz."
+            />
+          )}
+          <Card style={styles.card}>
+            <Text style={styles.heading}>İhtiyaç özeti</Text>
+            <Text style={styles.body}>
+              Malzeme: {materialLabels[displayedNeed.materialType]}
+            </Text>
+            <Text style={styles.body}>
+              Ölçü: {displayedNeed.widthMm} × {displayedNeed.heightMm} mm
+            </Text>
+            <Text style={styles.body}>
+              Kalınlık:{' '}
+              {displayedNeed.thicknessMm === null
+                ? 'Doğrulanacak'
+                : `${displayedNeed.thicknessMm} mm`}
+            </Text>
+            <Text style={styles.body}>Adet: {displayedNeed.quantity}</Text>
+            <Text style={styles.body}>Bölge: {displayedNeed.region}</Text>
+            <Text style={styles.body}>
+              İhtiyaç tarihi: {displayedNeed.neededBy}
+            </Text>
+          </Card>
 
-      <ActionButton
-        title="Uygun ilanları gör"
-        onPress={() =>
-          router.push({
-            pathname: '/student/matches/[needId]',
-            params: { needId: need.id },
-          })
-        }
-      />
-      <ActionButton
-        title="İhtiyaç listesine dön"
-        secondary
-        onPress={() => router.dismissTo('/student')}
-      />
+          <Card style={styles.card}>
+            <Text style={styles.heading}>Bu ihtiyacın talepleri</Text>
+            <Feedback
+              loading={requestsLoading}
+              error={requestsError}
+              retry={() => void reloadRequests()}
+            />
+            {!requestsLoading && !requestsError && relatedRequests.length === 0 ? (
+              <StatePanel
+                kind="empty"
+                title="Henüz talep yok"
+                message={
+                  needIsReadOnly(displayedNeed)
+                    ? 'Bu arşivlenmiş ihtiyaç için geçmiş talep bulunmuyor.'
+                    : 'Uygun bir ilan bulduğunda oluşturduğun talepler burada görünür.'
+                }
+              />
+            ) : null}
+            {!requestsLoading &&
+            !requestsError &&
+            relatedRequests.length > 0 ? (
+              <ActionButton
+                title={`İlgili ${relatedRequests.length} talebi görüntüle`}
+                secondary
+                onPress={() =>
+                  router.push({
+                    pathname: '/student/requests',
+                    params: { needId: displayedNeed.id },
+                  })
+                }
+              />
+            ) : null}
+          </Card>
+
+          {!needIsReadOnly(displayedNeed) && (
+            <>
+              <ActionButton
+                title="İhtiyacı düzenle"
+                disabled={archiving}
+                onPress={() => {
+                  setEditNotice('');
+                  setEditing(true);
+                }}
+              />
+              <ActionButton
+                title="Uygun ilanları gör"
+                disabled={archiving}
+                onPress={() =>
+                  router.push({
+                    pathname: '/student/matches/[needId]',
+                    params: { needId: displayedNeed.id },
+                  })
+                }
+              />
+              {relatedRequests.length === 0 ? (
+                <ActionButton
+                  title="Taleplerimi görüntüle"
+                  secondary
+                  disabled={requestsLoading || !!requestsError}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/student/requests',
+                      params: { needId: displayedNeed.id },
+                    })
+                  }
+                />
+              ) : null}
+              {archiveError ? (
+                <StatePanel
+                  kind="error"
+                  title="İhtiyaç arşivlenemedi"
+                  message={archiveError}
+                  action={{
+                    label: 'Tekrar dene',
+                    onPress: () => {
+                      setArchiveError('');
+                      setConfirmArchive(true);
+                    },
+                  }}
+                />
+              ) : null}
+              {confirmArchive ? (
+                <Card style={styles.card}>
+                  <Text style={styles.heading}>İhtiyaç arşivlensin mi?</Text>
+                  <Text style={styles.body}>
+                    Geçmiş talepler korunur. Bekleyen veya onaylanmış bir talep
+                    varsa arşivleme sunucu tarafından reddedilir.
+                  </Text>
+                  <ActionButton
+                    title={archiving ? 'Arşivleniyor…' : 'Evet, arşivle'}
+                    loading={archiving}
+                    disabled={archiving}
+                    onPress={() => void handleArchive()}
+                  />
+                  <ActionButton
+                    title="Vazgeç"
+                    secondary
+                    disabled={archiving}
+                    onPress={() => setConfirmArchive(false)}
+                  />
+                </Card>
+              ) : (
+                <ActionButton
+                  title="İhtiyacı arşivle"
+                  secondary
+                  onPress={() => {
+                    setArchiveError('');
+                    setConfirmArchive(true);
+                  }}
+                />
+              )}
+            </>
+          )}
+          <ActionButton
+            title="İhtiyaç listesine dön"
+            secondary
+            disabled={archiving}
+            onPress={() => router.dismissTo('/student')}
+          />
+        </>
+      )}
     </Screen>
   );
 }
@@ -120,5 +336,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 25,
   },
-
 });
