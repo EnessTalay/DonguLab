@@ -63,6 +63,7 @@ src/features/home/          Genel bakış ekranı
 src/features/student/       Öğrenci ekranları, ihtiyaç formu, matching ve wrapper servis
 src/features/business/      İşletme ekranı, form/listeler, kaynak ve işlem hook'ları
 src/features/developer/     Yalnız geliştirmede erişilen servis test ekranı
+src/features/navigation/    Rol bazlı sekmeler ve bulunamadı ekranı
 src/components/             Frame, navigasyon, alan, düğme, kart, filtre, durum etiketi
 src/hooks/                  Ortak odakta veri yükleme / yeniden deneme
 src/lib/                    Ortak tarih, sayı, etiket ve hata yardımcıları
@@ -94,6 +95,7 @@ canlı e-posta akışında kabul testi yapıldığı anlamına gelmez.
 - [Güncel servis sözleşmesi](docs/service-contract.md)
 - [Paket 1: başlangıç envanteri ve eksikler](docs/package-1-baseline.md)
 - [Paket 2: kod yapısı ve yapılanlar](docs/package-2-structure.md)
+- [Paket 3: gezinme ve ekran durumları](docs/package-3-navigation.md)
 - [Önceki canlı altyapı doğrulaması](docs/live-supabase-verification.md) — tarihsel kayıt
 
 Expo API değişikliklerinde [SDK 57 belgelerini](https://docs.expo.dev/versions/v57.0.0/)

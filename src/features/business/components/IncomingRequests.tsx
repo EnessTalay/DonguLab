@@ -4,7 +4,8 @@ import { DeliveryConfirmation } from './DeliveryConfirmation';
 import { StatusBadge } from '@/components/status-badge';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { styles } from '@/components/screen';
-import { ActionButton } from '@/components/ui';
+import { ActionButton, Feedback } from '@/components/ui';
+import { StatePanel } from '@/components/state-panel';
 import { ChoiceChips } from '@/components/choice-chips';
 import { formatDateTime as formatRequestExpiry } from '@/lib/dates';
 import { local } from '../styles';
@@ -30,6 +31,7 @@ export function IncomingRequests({
     | 'deliveryCodes'
     | 'setDeliveryCodes'
     | 'handleDeliveryConfirmation'
+    | 'setSection'
   >;
 }) {
   const {
@@ -45,6 +47,7 @@ export function IncomingRequests({
     refreshIncomingRequests,
     refreshRequestActionData,
     handleRequestAction,
+    setSection,
   } = model;
   return (
     <>
@@ -65,52 +68,49 @@ export function IncomingRequests({
           { value: 'all', label: 'Tümü' },
         ]}
       />
-      <View style={local.listHeading}>
-        <Text style={styles.heading}>Gelen talepler</Text>
-        {loadingRequests && (
-          <ActivityIndicator
-            accessibilityLabel="Talepler yükleniyor"
-            color={colors.heading}
-          />
-        )}
-      </View>
       {requestActionMessage && (
-        <Text
-          accessibilityRole="alert"
-          style={
-            requestActionMessage.type === 'error' ? local.error : local.success
+        <StatePanel
+          kind={requestActionMessage.type === 'success' ? 'success' : 'error'}
+          title={
+            requestActionMessage.type === 'success'
+              ? 'İşlem tamamlandı'
+              : 'İşlem tamamlanamadı'
           }
-        >
-          {requestActionMessage.message}
-        </Text>
+          message={requestActionMessage.message}
+        />
       )}
-      {!!requestListError && (
-        <View style={local.listError}>
-          <Text accessibilityRole="alert" style={local.error}>
-            {requestListError}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            disabled={loadingRequests}
-            onPress={() => void refreshIncomingRequests()}
-            style={local.retryButton}
-          >
-            <Text style={local.retryText}>Talepleri yeniden yükle</Text>
-          </Pressable>
-        </View>
-      )}
+      <Feedback
+        loading={loadingRequests}
+        loadingLabel="Talepler yükleniyor…"
+        error={requestListError}
+        retry={() => void refreshIncomingRequests()}
+      />
       {!loadingRequests &&
         !requestListError &&
         incomingRequests.length === 0 && (
-          <Text style={styles.note}>
-            Henüz gelen talep yok. Yeni talepler burada görünecek.
-          </Text>
+          <StatePanel
+            kind="empty"
+            title="Henüz gelen talep yok"
+            message="Öğrenciler ilanlarınıza talep gönderdiğinde burada görünecek."
+            action={{
+              label: 'İlanlarımı incele',
+              onPress: () => setSection('listings'),
+            }}
+          />
         )}
       {!loadingRequests &&
         !requestListError &&
         incomingRequests.length > 0 &&
         visibleRequests.length === 0 && (
-          <Text style={styles.note}>Bu filtrede talep bulunmuyor.</Text>
+          <StatePanel
+            kind="empty"
+            title="Bu filtrede talep yok"
+            message="Diğer durumdaki talepleri görmek için tümünü seçebilirsiniz."
+            action={{
+              label: 'Tüm talepleri göster',
+              onPress: () => setRequestFilter('all'),
+            }}
+          />
         )}
       {!loadingRequests &&
         !requestListError &&

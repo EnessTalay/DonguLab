@@ -1,66 +1,8 @@
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type TextStyle,
-  type ViewStyle,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { StatePanel } from './state-panel';
 import { colors } from '@/theme/tokens';
-
-export function ActionButton({
-  title,
-  onPress,
-  disabled,
-  color,
-  secondary = false,
-  loading = false,
-  style,
-  textStyle,
-}: {
-  title: string;
-  onPress: () => void;
-  disabled?: boolean;
-  color?: string;
-  secondary?: boolean;
-  loading?: boolean;
-  style?: StyleProp<ViewStyle>;
-  textStyle?: StyleProp<TextStyle>;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      accessibilityState={{ disabled: !!disabled || loading, busy: loading }}
-      disabled={disabled || loading}
-      onPress={onPress}
-      style={({ pressed }) => [
-        ui.button,
-        {
-          backgroundColor: secondary ? colors.soft : (color ?? colors.primary),
-        },
-        style,
-        (pressed || disabled || loading) && { opacity: 0.55 },
-      ]}
-    >
-      {loading ? (
-        <ActivityIndicator color={secondary ? colors.ink : colors.surface} />
-      ) : (
-        <Text
-          style={[
-            ui.buttonLabel,
-            secondary && { color: colors.ink },
-            textStyle,
-          ]}
-        >
-          {title}
-        </Text>
-      )}
-    </Pressable>
-  );
-}
+import type { ErrorCode } from '@/services/contracts';
+export { ActionButton } from './action-button';
 
 export function Metrics({
   items,
@@ -83,44 +25,36 @@ export function Feedback({
   loading,
   error,
   retry,
+  errorCode,
+  loadingLabel = 'Bilgiler yükleniyor…',
 }: {
   loading?: boolean;
   error?: string;
   retry?: () => void;
+  errorCode?: ErrorCode | null;
+  loadingLabel?: string;
 }) {
   if (loading)
     return (
-      <View style={ui.feedback}>
-        <ActivityIndicator color={colors.primary} />
-        <Text style={ui.label}>Bilgiler yükleniyor…</Text>
-      </View>
+      <StatePanel
+        kind="loading"
+        title={loadingLabel}
+        message="Lütfen bekleyin."
+      />
     );
   if (!error) return null;
+  const missing = errorCode === 'NOT_FOUND';
   return (
-    <View style={ui.feedback}>
-      <Text accessibilityRole="alert" style={{ color: colors.danger }}>
-        {error}
-      </Text>
-      {retry && <ActionButton title="Yeniden dene" onPress={retry} secondary />}
-    </View>
+    <StatePanel
+      kind={missing ? 'not-found' : 'error'}
+      title={missing ? 'Kayıt bulunamadı' : 'İşlem tamamlanamadı'}
+      message={error}
+      action={retry ? { label: 'Yeniden dene', onPress: retry } : undefined}
+    />
   );
 }
 
 const ui = StyleSheet.create({
-  button: {
-    minHeight: 50,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonLabel: {
-    color: 'white',
-    fontSize: 15,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   metric: {
     flex: 1,
@@ -134,10 +68,4 @@ const ui = StyleSheet.create({
   },
   value: { color: colors.ink, fontSize: 28, fontWeight: '700' },
   label: { color: colors.muted, fontSize: 13, lineHeight: 19 },
-  feedback: {
-    padding: 20,
-    gap: 12,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
-  },
 });

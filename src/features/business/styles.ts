@@ -2,7 +2,6 @@ import { colors } from '@/theme/tokens';
 import { StyleSheet } from 'react-native';
 
 export const local = StyleSheet.create({
-  container: { flex: 1 },
   field: { gap: 7 },
   feedbackGroup: { gap: 8 },
   fieldError: { color: colors.error, fontSize: 13, lineHeight: 19 },
@@ -47,8 +46,8 @@ export const local = StyleSheet.create({
   },
   optionText: { color: colors.heading, fontSize: 15, fontWeight: '600' },
   selectedOptionText: { color: colors.surface },
-  row: { flexDirection: 'row', gap: 12 },
-  halfField: { flex: 1 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  halfField: { flex: 1, flexBasis: 140, minWidth: 120 },
   submitButton: {
     minHeight: 50,
     alignItems: 'center',
@@ -60,17 +59,6 @@ export const local = StyleSheet.create({
   submitText: { color: colors.surface, fontSize: 16, fontWeight: '700' },
   error: { color: colors.error, fontSize: 14, lineHeight: 21 },
   success: { color: colors.heading, fontSize: 14, lineHeight: 21 },
-  listHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  listError: {
-    gap: 10,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: colors.warningSurface,
-  },
   retryButton: { alignSelf: 'flex-start', paddingVertical: 8 },
   retryText: { color: colors.heading, fontSize: 15, fontWeight: '700' },
   requestTitleRow: {

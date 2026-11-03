@@ -1,3 +1,4 @@
+import { AppError, type ErrorCode } from '@/services/contracts';
 import { errorMessage } from '@/lib/errors';
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -7,6 +8,7 @@ export function useFocusedResource<T>(load: () => Promise<T>) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState<ErrorCode | null>(null);
   const active = useRef(false);
   const generation = useRef(0);
   const reload = useCallback(async () => {
@@ -14,6 +16,7 @@ export function useFocusedResource<T>(load: () => Promise<T>) {
     if (active.current) {
       setLoading(true);
       setError('');
+      setErrorCode(null);
     }
     try {
       const result = await load();
@@ -22,8 +25,10 @@ export function useFocusedResource<T>(load: () => Promise<T>) {
         return true;
       }
     } catch (e) {
-      if (active.current && ticket === generation.current)
+      if (active.current && ticket === generation.current) {
         setError(errorMessage(e, 'Bilgiler yüklenemedi.'));
+        setErrorCode(e instanceof AppError ? e.code : null);
+      }
     } finally {
       if (active.current && ticket === generation.current) setLoading(false);
     }
@@ -40,5 +45,5 @@ export function useFocusedResource<T>(load: () => Promise<T>) {
       };
     }, [reload]),
   );
-  return { data, loading, error, reload };
+  return { data, loading, error, errorCode, reload };
 }

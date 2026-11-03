@@ -2,15 +2,17 @@ import { colors } from '@/theme/tokens';
 import { StatusBadge } from '@/components/status-badge';
 import { formatDateTime } from '@/lib/dates';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ActionButton, Feedback } from '@/components/ui';
 import { Screen } from '@/components/screen';
 import { studentService } from '@/features/student/service';
 import { useFocusedResource } from '@/hooks/use-focused-resource';
 import { ChoiceChips } from '@/components/choice-chips';
+import { StatePanel } from '@/components/state-panel';
 
 export default function RequestsScreen() {
+  const { created } = useLocalSearchParams<{ created?: string }>();
   const [deliveryCodes, setDeliveryCodes] = useState<
     Record<string, { code: string; expiresAt: string }>
   >({});
@@ -24,12 +26,13 @@ export default function RequestsScreen() {
     useCallback(() => studentService.listMyRequests(), []),
   );
   const requests = data ?? [];
+  const activeFilter = created ? 'active' : filter;
   const visibleRequests = requests.filter(
     (item) =>
-      filter === 'all' ||
+      activeFilter === 'all' ||
       (item.request.status === 'pending' ||
         item.request.status === 'approved') ===
-        (filter === 'active'),
+        (activeFilter === 'active'),
   );
   const hasCodes = Object.keys(deliveryCodes).length > 0;
   useEffect(() => {
@@ -91,13 +94,30 @@ export default function RequestsScreen() {
 
   return (
     <Screen title="Taleplerim">
+      {created && requests.some((item) => item.request.id === created) && (
+        <StatePanel
+          kind="success"
+          title="Talebin oluşturuldu"
+          message="Durumunu buradan takip edebilirsin. Malzeme, işletme onayından sonra ayrılır."
+          action={{
+            label: 'Tamam',
+            onPress: () => {
+              setFilter('active');
+              router.setParams({ created: undefined });
+            },
+          }}
+        />
+      )}
       <Text style={styles.body}>
         Bekleyen talepler işletme onayı bekler. Onaylanan talebin teslim kodunu
         yalnız malzemeyi alırken işletmeyle paylaş.
       </Text>
       <ChoiceChips
-        value={filter}
-        onChange={setFilter}
+        value={activeFilter}
+        onChange={(value) => {
+          router.setParams({ created: undefined });
+          setFilter(value);
+        }}
         options={[
           { value: 'active', label: 'Aktif talepler' },
           { value: 'history', label: 'Geçmiş' },
@@ -113,18 +133,20 @@ export default function RequestsScreen() {
           void reload();
         }}
       />
-      <Feedback error={error || actionError} />
+      <Feedback
+        error={error || actionError}
+        retry={error ? () => void reload() : undefined}
+      />
       {!loading && !error && visibleRequests.length === 0 ? (
-        <View style={styles.card}>
-          <Text style={styles.heading}>Bu bölümde talep yok</Text>
-          <Text style={styles.body}>
-            İhtiyacına uygun bir ilan seçerek talep oluşturabilirsin. Tamamlanan
-            ve iptal edilen talepler Geçmiş bölümünde yer alır.
-          </Text>
-          <Link href="/student" style={styles.body}>
-            İhtiyaçlarımı incele →
-          </Link>
-        </View>
+        <StatePanel
+          kind="empty"
+          title="Bu bölümde talep yok"
+          message="İhtiyacına uygun bir ilan seçerek talep oluşturabilirsin. Tamamlanan ve iptal edilen talepler Geçmiş bölümünde yer alır."
+          action={{
+            label: 'İhtiyaçlarımı incele',
+            onPress: () => router.navigate('/student'),
+          }}
+        />
       ) : (
         !error &&
         visibleRequests.map(

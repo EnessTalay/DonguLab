@@ -1,12 +1,11 @@
-import { colors } from '@/theme/tokens';
 import { Card } from '@/components/card';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Text } from 'react-native';
 import { styles } from '@/components/screen';
-import { ActionButton } from '@/components/ui';
+import { ActionButton, Feedback } from '@/components/ui';
+import { StatePanel } from '@/components/state-panel';
 import { ChoiceChips } from '@/components/choice-chips';
 import { materialLabels } from '@/lib/labels';
 import { istanbulDate as getTodayInIstanbul } from '@/lib/dates';
-import { local } from '../styles';
 import type { BusinessModel } from '../use-business';
 
 export function ListingList({
@@ -21,6 +20,7 @@ export function ListingList({
     | 'listError'
     | 'visibleListings'
     | 'refreshListings'
+    | 'setSection'
   >;
 }) {
   const {
@@ -31,6 +31,7 @@ export function ListingList({
     listError,
     visibleListings,
     refreshListings,
+    setSection,
   } = model;
   return (
     <>
@@ -49,39 +50,36 @@ export function ListingList({
           { value: 'expired', label: 'Süresi geçmiş' },
         ]}
       />
-      <View style={local.listHeading}>
-        <Text style={styles.heading}>İlanlarım</Text>
-        {loadingListings && (
-          <ActivityIndicator
-            accessibilityLabel="İlanlar yükleniyor"
-            color={colors.heading}
-          />
-        )}
-      </View>
-      {!!listError && (
-        <View style={local.listError}>
-          <Text accessibilityRole="alert" style={local.error}>
-            {listError}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void refreshListings()}
-            style={local.retryButton}
-          >
-            <Text style={local.retryText}>Yeniden dene</Text>
-          </Pressable>
-        </View>
-      )}
+      <Feedback
+        loading={loadingListings}
+        loadingLabel="İlanlar yükleniyor…"
+        error={listError}
+        retry={() => void refreshListings()}
+      />
       {!loadingListings && !listError && listings.length === 0 && (
-        <Text style={styles.note}>
-          Henüz ilanınız yok. Yeni ilan sekmesinden ilk malzemenizi ekleyin.
-        </Text>
+        <StatePanel
+          kind="empty"
+          title="İlk malzemenizi döngüye katın"
+          message="İlan oluşturarak kullanılabilir malzemelerinizi öğrenci projeleriyle buluşturun."
+          action={{
+            label: 'Yeni ilan oluştur',
+            onPress: () => setSection('new'),
+          }}
+        />
       )}
       {!loadingListings &&
         !listError &&
         listings.length > 0 &&
         visibleListings.length === 0 && (
-          <Text style={styles.note}>Bu filtreye uygun ilan yok.</Text>
+          <StatePanel
+            kind="empty"
+            title="Bu filtreye uygun ilan yok"
+            message="Diğer ilanları görmek için filtreyi temizleyebilirsiniz."
+            action={{
+              label: 'Tüm ilanları göster',
+              onPress: () => setListingFilter('all'),
+            }}
+          />
         )}
       {!loadingListings &&
         !listError &&

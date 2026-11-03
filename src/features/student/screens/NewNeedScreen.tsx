@@ -18,7 +18,7 @@ export default function NewNeedScreen() {
           });
           router.replace({
             pathname: '/student/needs/[id]',
-            params: { id: createdNeed.id },
+            params: { id: createdNeed.id, created: '1' },
           });
         }}
       />

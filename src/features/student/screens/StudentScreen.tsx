@@ -2,11 +2,12 @@ import { colors } from '@/theme/tokens';
 import { materialLabels } from '@/lib/labels';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Feedback, Metrics } from '@/components/ui';
-import { Link, router } from 'expo-router';
+import { ActionButton, Feedback, Metrics } from '@/components/ui';
+import { router } from 'expo-router';
 import { Screen, styles as screenStyles } from '@/components/screen';
 import { studentService } from '@/features/student/service';
 import { useFocusedResource } from '@/hooks/use-focused-resource';
+import { StatePanel } from '@/components/state-panel';
 
 export default function StudentScreen() {
   const [query, setQuery] = useState('');
@@ -37,19 +38,15 @@ export default function StudentScreen() {
       )}
 
       <View style={styles.toolbar}>
-        <Link href="/student/new-need" asChild>
-          <Pressable accessibilityRole="button" style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Yeni ihtiyaç</Text>
-          </Pressable>
-        </Link>
-
-        <Pressable
-          accessibilityRole="button"
-          style={styles.secondaryButton}
-          onPress={() => router.push('/student/requests')}
-        >
-          <Text style={styles.secondaryButtonText}>Taleplerim</Text>
-        </Pressable>
+        <ActionButton
+          title="+ Yeni ihtiyaç"
+          onPress={() => router.push('/student/new-need')}
+        />
+        <ActionButton
+          title="Taleplerim"
+          secondary
+          onPress={() => router.navigate('/student/requests')}
+        />
       </View>
 
       <TextInput
@@ -58,29 +55,38 @@ export default function StudentScreen() {
         value={query}
         onChangeText={setQuery}
         style={{
-          backgroundColor: 'white',
+          backgroundColor: colors.surface,
           borderWidth: 1,
-          borderColor: '#dde4db',
+          borderColor: colors.border,
           borderRadius: 14,
           padding: 16,
           fontSize: 16,
-          color: '#183c32',
+          color: colors.ink,
         }}
       />
       <Feedback loading={loading} error={error} retry={() => void reload()} />
       {!loading &&
         !error &&
         (visibleNeeds.length === 0 ? (
-          <View style={screenStyles.card}>
-            <Text style={screenStyles.heading}>
-              {query ? 'Aramana uygun ihtiyaç yok' : 'İlk projenle başlayalım'}
-            </Text>
-            <Text style={screenStyles.body}>
-              {query
+          <StatePanel
+            kind="empty"
+            title={
+              query ? 'Aramana uygun ihtiyaç yok' : 'İlk projenle başlayalım'
+            }
+            message={
+              query
                 ? 'Başka bir proje adı veya bölge deneyebilirsin.'
-                : 'Yeni ihtiyaç düğmesinden ölçüleri girerek uygun malzemeleri bulabilirsin.'}
-            </Text>
-          </View>
+                : 'Ölçüleri girerek projen için uygun malzemeleri bulabilirsin.'
+            }
+            action={
+              query
+                ? { label: 'Aramayı temizle', onPress: () => setQuery('') }
+                : {
+                    label: 'Yeni ihtiyaç oluştur',
+                    onPress: () => router.push('/student/new-need'),
+                  }
+            }
+          />
         ) : (
           visibleNeeds.map((need) => (
             <Pressable
@@ -115,29 +121,5 @@ const styles = StyleSheet.create({
     gap: 12,
     flexWrap: 'wrap',
     marginBottom: 4,
-  },
-  primaryButton: {
-    backgroundColor: colors.heading,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-  },
-  primaryButtonText: {
-    color: colors.surface,
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  secondaryButton: {
-    backgroundColor: '#eef3ef',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-  },
-  secondaryButtonText: {
-    color: colors.heading,
-    fontWeight: '700',
-    fontSize: 15,
   },
 });

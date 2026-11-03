@@ -3,14 +3,7 @@ import { colors } from '@/theme/tokens';
 import { InputField } from '@/components/input-field';
 import { materialLabels } from '@/lib/labels';
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CreateNeedInput } from '@/services/contracts';
 import { parseNeedForm } from '../need-form';
 import { istanbulDate } from '@/lib/dates';
@@ -82,181 +75,172 @@ export function NeedForm({ onSubmit }: NeedFormProps) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.wrapper}
-    >
-      <View style={styles.formContainer}>
-        <View style={styles.fieldGroup}>
+    <View style={styles.formContainer}>
+      <View style={styles.fieldGroup}>
+        <InputField
+          label="Proje adı"
+          error={errors.projectName}
+          accessibilityLabel="Proje adı"
+          maxLength={200}
+          editable={!isSaving}
+          value={form.projectName}
+          onChangeText={(value) => updateField('projectName', value)}
+          placeholder="Örn. Mimari maket"
+          autoCapitalize="words"
+          style={[styles.input, errors.projectName ? styles.inputError : null]}
+        />
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Malzeme</Text>
+        <View style={styles.segmentedRow}>
+          {(['wood', 'metal', 'plastic'] as const).map((option) => (
+            <Pressable
+              key={option}
+              accessibilityRole="button"
+              accessibilityState={{ selected: form.materialType === option }}
+              disabled={isSaving}
+              style={[
+                styles.segmentButton,
+                form.materialType === option
+                  ? styles.segmentButtonSelected
+                  : null,
+              ]}
+              onPress={() => updateField('materialType', option)}
+            >
+              <Text
+                style={[
+                  styles.segmentLabel,
+                  form.materialType === option
+                    ? styles.segmentLabelSelected
+                    : null,
+                ]}
+              >
+                {materialLabels[option]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.twoColumn}>
+        <View style={[styles.fieldGroup, styles.column]}>
           <InputField
-            label="Proje adı"
-            error={errors.projectName}
-            accessibilityLabel="Proje adı"
-            maxLength={200}
+            label="Genişlik (mm)"
+            error={errors.widthMm}
+            accessibilityLabel="Genişlik, milimetre"
             editable={!isSaving}
-            value={form.projectName}
-            onChangeText={(value) => updateField('projectName', value)}
-            placeholder="Örn. Mimari maket"
-            autoCapitalize="words"
+            value={form.widthMm}
+            onChangeText={(value) =>
+              updateField('widthMm', sanitizeNumericInput(value))
+            }
+            keyboardType="numeric"
+            style={[styles.input, errors.widthMm ? styles.inputError : null]}
+          />
+        </View>
+
+        <View style={[styles.fieldGroup, styles.column]}>
+          <InputField
+            label="Yükseklik (mm)"
+            error={errors.heightMm}
+            accessibilityLabel="Yükseklik, milimetre"
+            editable={!isSaving}
+            value={form.heightMm}
+            onChangeText={(value) =>
+              updateField('heightMm', sanitizeNumericInput(value))
+            }
+            keyboardType="numeric"
+            style={[styles.input, errors.heightMm ? styles.inputError : null]}
+          />
+        </View>
+      </View>
+
+      <View style={styles.twoColumn}>
+        <View style={[styles.fieldGroup, styles.column]}>
+          <InputField
+            label="Kalınlık (mm)"
+            error={errors.thicknessMm}
+            accessibilityLabel="Kalınlık, milimetre, zorunlu"
+            editable={!isSaving}
+            value={form.thicknessMm}
+            onChangeText={(value) =>
+              updateField('thicknessMm', sanitizeNumericInput(value))
+            }
+            keyboardType="numeric"
+            placeholder="Örn. 6"
             style={[
               styles.input,
-              errors.projectName ? styles.inputError : null,
+              errors.thicknessMm ? styles.inputError : null,
             ]}
           />
         </View>
 
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Malzeme</Text>
-          <View style={styles.segmentedRow}>
-            {(['wood', 'metal', 'plastic'] as const).map((option) => (
-              <Pressable
-                key={option}
-                accessibilityRole="button"
-                accessibilityState={{ selected: form.materialType === option }}
-                disabled={isSaving}
-                style={[
-                  styles.segmentButton,
-                  form.materialType === option
-                    ? styles.segmentButtonSelected
-                    : null,
-                ]}
-                onPress={() => updateField('materialType', option)}
-              >
-                <Text
-                  style={[
-                    styles.segmentLabel,
-                    form.materialType === option
-                      ? styles.segmentLabelSelected
-                      : null,
-                  ]}
-                >
-                  {materialLabels[option]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.twoColumn}>
-          <View style={[styles.fieldGroup, styles.column]}>
-            <InputField
-              label="Genişlik (mm)"
-              error={errors.widthMm}
-              accessibilityLabel="Genişlik, milimetre"
-              editable={!isSaving}
-              value={form.widthMm}
-              onChangeText={(value) =>
-                updateField('widthMm', sanitizeNumericInput(value))
-              }
-              keyboardType="numeric"
-              style={[styles.input, errors.widthMm ? styles.inputError : null]}
-            />
-          </View>
-
-          <View style={[styles.fieldGroup, styles.column]}>
-            <InputField
-              label="Yükseklik (mm)"
-              error={errors.heightMm}
-              accessibilityLabel="Yükseklik, milimetre"
-              editable={!isSaving}
-              value={form.heightMm}
-              onChangeText={(value) =>
-                updateField('heightMm', sanitizeNumericInput(value))
-              }
-              keyboardType="numeric"
-              style={[styles.input, errors.heightMm ? styles.inputError : null]}
-            />
-          </View>
-        </View>
-
-        <View style={styles.twoColumn}>
-          <View style={[styles.fieldGroup, styles.column]}>
-            <InputField
-              label="Kalınlık (mm)"
-              error={errors.thicknessMm}
-              accessibilityLabel="Kalınlık, milimetre, zorunlu"
-              editable={!isSaving}
-              value={form.thicknessMm}
-              onChangeText={(value) =>
-                updateField('thicknessMm', sanitizeNumericInput(value))
-              }
-              keyboardType="numeric"
-              placeholder="Örn. 6"
-              style={[
-                styles.input,
-                errors.thicknessMm ? styles.inputError : null,
-              ]}
-            />
-          </View>
-
-          <View style={[styles.fieldGroup, styles.column]}>
-            <InputField
-              label="Adet"
-              error={errors.quantity}
-              accessibilityLabel="Malzeme adedi"
-              editable={!isSaving}
-              value={form.quantity}
-              onChangeText={(value) =>
-                updateField('quantity', value.replace(/[^0-9]/g, ''))
-              }
-              keyboardType="number-pad"
-              style={[styles.input, errors.quantity ? styles.inputError : null]}
-            />
-          </View>
-        </View>
-
-        <View style={styles.fieldGroup}>
+        <View style={[styles.fieldGroup, styles.column]}>
           <InputField
-            label="Bölge"
-            error={errors.region}
-            accessibilityLabel="Bölge"
-            maxLength={120}
+            label="Adet"
+            error={errors.quantity}
+            accessibilityLabel="Malzeme adedi"
             editable={!isSaving}
-            value={form.region}
-            onChangeText={(value) => updateField('region', value)}
-            placeholder="Örn. İstanbul"
-            autoCapitalize="words"
-            style={[styles.input, errors.region ? styles.inputError : null]}
+            value={form.quantity}
+            onChangeText={(value) =>
+              updateField('quantity', value.replace(/[^0-9]/g, ''))
+            }
+            keyboardType="number-pad"
+            style={[styles.input, errors.quantity ? styles.inputError : null]}
           />
         </View>
+      </View>
 
-        <View style={styles.fieldGroup}>
-          <InputField
-            label="İhtiyaç tarihi"
-            error={errors.neededBy}
-            accessibilityLabel="İhtiyaç tarihi, yıl ay gün"
-            editable={!isSaving}
-            value={form.neededBy}
-            onChangeText={(value) => updateField('neededBy', value)}
-            placeholder="YYYY-MM-DD"
-            autoCapitalize="none"
-            maxLength={10}
-            style={[styles.input, errors.neededBy ? styles.inputError : null]}
-          />
-        </View>
-
-        {submitError ? (
-          <Text style={styles.serverError}>{submitError}</Text>
-        ) : null}
-        <Text style={styles.label}>
-          Tüm ölçüler milimetredir. İhtiyaç kaydı oluşturmak malzeme
-          rezervasyonu yapmaz.
-        </Text>
-
-        <ActionButton
-          title={isSaving ? 'Kaydediliyor...' : 'Kaydet'}
-          loading={isSaving}
-          onPress={() => void handleSave()}
-          style={styles.primaryButton}
-          textStyle={styles.primaryButtonText}
+      <View style={styles.fieldGroup}>
+        <InputField
+          label="Bölge"
+          error={errors.region}
+          accessibilityLabel="Bölge"
+          maxLength={120}
+          editable={!isSaving}
+          value={form.region}
+          onChangeText={(value) => updateField('region', value)}
+          placeholder="Örn. İstanbul"
+          autoCapitalize="words"
+          style={[styles.input, errors.region ? styles.inputError : null]}
         />
       </View>
-    </KeyboardAvoidingView>
+
+      <View style={styles.fieldGroup}>
+        <InputField
+          label="İhtiyaç tarihi"
+          error={errors.neededBy}
+          accessibilityLabel="İhtiyaç tarihi, yıl ay gün"
+          editable={!isSaving}
+          value={form.neededBy}
+          onChangeText={(value) => updateField('neededBy', value)}
+          placeholder="YYYY-MM-DD"
+          autoCapitalize="none"
+          maxLength={10}
+          style={[styles.input, errors.neededBy ? styles.inputError : null]}
+        />
+      </View>
+
+      {submitError ? (
+        <Text style={styles.serverError}>{submitError}</Text>
+      ) : null}
+      <Text style={styles.label}>
+        Tüm ölçüler milimetredir. İhtiyaç kaydı oluşturmak malzeme rezervasyonu
+        yapmaz.
+      </Text>
+
+      <ActionButton
+        title={isSaving ? 'Kaydediliyor...' : 'Kaydet'}
+        loading={isSaving}
+        onPress={() => void handleSave()}
+        style={styles.primaryButton}
+        textStyle={styles.primaryButtonText}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: { width: '100%' },
   formContainer: {
     gap: 18,
     paddingBottom: 32,

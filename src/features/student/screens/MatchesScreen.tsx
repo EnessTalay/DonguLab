@@ -1,13 +1,15 @@
+import { AppError } from '@/services/contracts';
 import { colors } from '@/theme/tokens';
 import { materialLabels } from '@/lib/labels';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Link, router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Feedback, ActionButton } from '@/components/ui';
 import { ChoiceChips } from '@/components/choice-chips';
 import { useFocusedResource } from '@/hooks/use-focused-resource';
 import { Screen } from '@/components/screen';
 import { studentService } from '@/features/student/service';
+import { StatePanel } from '@/components/state-panel';
 
 export default function MatchListScreen() {
   const { needId } = useLocalSearchParams<{ needId: string }>();
@@ -15,9 +17,10 @@ export default function MatchListScreen() {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
   const [filter, setFilter] = useState<'eligible' | 'all'>('eligible');
-  const { data, loading, error, reload } = useFocusedResource(
+  const { data, loading, error, errorCode, reload } = useFocusedResource(
     useCallback(async () => {
-      if (!routeNeedId) throw new Error('İhtiyaç bağlantısı geçersiz.');
+      if (!routeNeedId)
+        throw new AppError('NOT_FOUND', 'İhtiyaç bağlantısı geçersiz.');
       return studentService.listMatches(routeNeedId);
     }, [routeNeedId]),
   );
@@ -36,7 +39,14 @@ export default function MatchListScreen() {
         listingId,
       );
       if (request) {
-        router.replace('/student/requests');
+        router.dismissTo({
+          pathname: '/student/needs/[id]',
+          params: { id: routeNeedId },
+        });
+        router.navigate({
+          pathname: '/student/requests',
+          params: { created: request.id },
+        });
       }
     } catch (error) {
       setActionError(
@@ -82,22 +92,29 @@ export default function MatchListScreen() {
       />
       <Feedback
         error={error || actionError}
+        errorCode={errorCode}
         retry={() => {
           setActionError('');
           void reload();
         }}
       />
       {!error && visibleMatches.length === 0 ? (
-        <View style={styles.card}>
-          <Text style={styles.heading}>Şu an uygun ilan yok</Text>
-          <Text style={styles.body}>
-            Tüm ilanlar sekmesinden uygun olmayan ilanların nedenlerini
-            inceleyebilir veya daha sonra yeniden kontrol edebilirsin.
-          </Text>
-          <Link href="/student" style={styles.body}>
-            İhtiyaçlarıma dön →
-          </Link>
-        </View>
+        <StatePanel
+          kind="empty"
+          title={matches.length ? 'Şu an uygun ilan yok' : 'Henüz ilan yok'}
+          message="İhtiyacını karşılayan ilanları daha sonra yeniden kontrol edebilirsin."
+          action={
+            filter === 'eligible' && matches.length
+              ? {
+                  label: 'Tüm ilanların nedenlerini incele',
+                  onPress: () => setFilter('all'),
+                }
+              : {
+                  label: 'İhtiyaçlarıma dön',
+                  onPress: () => router.dismissTo('/student'),
+                }
+          }
+        />
       ) : (
         !error &&
         visibleMatches.map((match) => {

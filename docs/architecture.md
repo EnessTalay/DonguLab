@@ -1,6 +1,6 @@
 # Uygulama mimarisi
 
-Paket 2 sonrası güncel yapı. Geçmiş teslim kayıtları `enes-handoff.md`,
+Paket 3 sonrası güncel yapı. Geçmiş teslim kayıtları `enes-handoff.md`,
 `verification.md`, `merge-notes.md` ve `live-supabase-verification.md` dosyalarıdır.
 Eksik haritasının başlangıç hali `package-1-baseline.md` içindedir.
 
@@ -23,9 +23,19 @@ Ekranlarda doğrudan Supabase sorgusu yazılmaz. Sunucuya yazma işlemleri
 `src/app` içindeki ürün dosyaları yalnız özellik ekranını dışa aktarır. `_layout.tsx`
 dosyaları navigator ve rol korumalarını kurar. Mevcut rota adresleri korunur.
 
-`ScreenFrame` oturum veya router bilmeyen sunum kabuğudur. `AppNavigation`
-oturum/aktif rota bilgisini kullanır. `Screen` bu iki parçayı birleştiren kısa
-uyumluluk girişidir; ortak stilleri `theme/screen-styles.ts` üzerinden dışa aktarır.
+`ScreenFrame` oturum veya router bilmeyen sunum/kaydırma kabuğudur. `Screen`
+sekme içinde olup olmadığına göre alt safe area'yı ayarlar; ortak stilleri
+`theme/screen-styles.ts` üzerinden dışa aktarır. Klavye davranışı burada tek yerde yönetilir.
+
+Kök Stack içinde `(main)` gerçek Tabs navigator'ı vardır. `AppNavigation`
+Expo Router'ın BottomTabBar bileşenini kullanır; ekran içinde ayrı alt menü
+çizilmez. İhtiyaç Stack'i `(needs)`, talepler Stack'i `(requests)` grubunda
+ayrıdır. Ana sekmeler kendi geçmişini korur; roller Tabs.Protected ile sınırlandırılır.
+Gruplar mevcut `/student/...` ve `/business` adreslerini korur.
+
+`StatePanel` boş/hata/yüklenme/bulunamadı/başarı sunumunu, `Feedback` bunun
+uyumluluk girişini sağlar. Geçersiz adresler ortak +not-found ekranına gider.
+Detay geri düğmeleri geçmiş yoksa liste/ana sayfa fallback'i kullanır.
 
 Alanlar `InputField`, ana eylemler `ActionButton`, kartlar `Card`, durumlar
 `StatusBadge`, filtreler `ChoiceChips` ile paylaşılır. Renkler `theme/tokens.ts`,
@@ -82,5 +92,5 @@ Supabase tarafında profiles, listings, needs, requests ve deliveries tabloları
 RLS, app_command, list_request_views ve refresh_reservations bulunur. Stok
 değişimleri atomiktir. Yeni profil öğrenci olur; işletme rolü yönetici tarafından atanır.
 
-Paket 2 yeni alan, migration, bağımlılık veya iş kuralı eklemez. Düzenleme,
+Paket 2 ve 3 yeni alan, migration, bağımlılık veya iş kuralı eklemez. Düzenleme,
 arşivleme ve ilan kapatma işlemleri sonraki paketlerin kapsamıdır.

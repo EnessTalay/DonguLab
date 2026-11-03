@@ -1,28 +1,38 @@
+import { AppError } from '@/services/contracts';
 import { colors } from '@/theme/tokens';
 import { Card } from '@/components/card';
 import { materialLabels } from '@/lib/labels';
 import { useCallback } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
-import { Link, useLocalSearchParams } from 'expo-router';
-import { Feedback } from '@/components/ui';
+import { StyleSheet, Text } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ActionButton, Feedback } from '@/components/ui';
+import { StatePanel } from '@/components/state-panel';
 import { useFocusedResource } from '@/hooks/use-focused-resource';
 import { Screen } from '@/components/screen';
 import { studentService } from '@/features/student/service';
 
 export default function NeedDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, created } = useLocalSearchParams<{
+    id: string;
+    created?: string;
+  }>();
   const routeId = Array.isArray(id) ? id[0] : id;
   const {
     data: need,
     loading,
     error,
+    errorCode,
     reload,
   } = useFocusedResource(
     useCallback(async () => {
-      if (!routeId) throw new Error('İhtiyaç bağlantısı geçersiz.');
+      if (!routeId)
+        throw new AppError('NOT_FOUND', 'İhtiyaç bağlantısı geçersiz.');
       const item = await studentService.getNeed(routeId);
       if (!item)
-        throw new Error('İhtiyaç bulunamadı veya bu hesaba ait değil.');
+        throw new AppError(
+          'NOT_FOUND',
+          'İhtiyaç bulunamadı veya bu hesaba ait değil.',
+        );
       return item;
     }, [routeId]),
   );
@@ -30,16 +40,30 @@ export default function NeedDetailScreen() {
   if (loading || error || !need) {
     return (
       <Screen title="İhtiyaç detayı">
-        <Feedback loading={loading} error={error} retry={() => void reload()} />
-        <Link href="/student" style={styles.body}>
-          İhtiyaçlarıma dön →
-        </Link>
+        <Feedback
+          loading={loading}
+          error={error}
+          errorCode={errorCode}
+          retry={() => void reload()}
+        />
+        <ActionButton
+          title="İhtiyaçlarıma dön"
+          secondary
+          onPress={() => router.dismissTo('/student')}
+        />
       </Screen>
     );
   }
 
   return (
     <Screen title={need.projectName}>
+      {created === '1' && (
+        <StatePanel
+          kind="success"
+          title="İhtiyacın kaydedildi"
+          message="Şimdi ölçülerine uygun malzeme ilanlarını inceleyebilirsin."
+        />
+      )}
       <Card style={styles.card}>
         <Text style={styles.heading}>İhtiyaç özeti</Text>
         <Text style={styles.body}>
@@ -59,23 +83,20 @@ export default function NeedDetailScreen() {
         <Text style={styles.body}>İhtiyaç tarihi: {need.neededBy}</Text>
       </Card>
 
-      <Link
-        href={{
-          pathname: '/student/matches/[needId]',
-          params: { needId: need.id },
-        }}
-        asChild
-      >
-        <Pressable style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Uygun ilanları gör</Text>
-        </Pressable>
-      </Link>
-
-      <Link href="/student" asChild>
-        <Pressable style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>İhtiyaç listesine dön</Text>
-        </Pressable>
-      </Link>
+      <ActionButton
+        title="Uygun ilanları gör"
+        onPress={() =>
+          router.push({
+            pathname: '/student/matches/[needId]',
+            params: { needId: need.id },
+          })
+        }
+      />
+      <ActionButton
+        title="İhtiyaç listesine dön"
+        secondary
+        onPress={() => router.dismissTo('/student')}
+      />
     </Screen>
   );
 }
@@ -99,28 +120,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 25,
   },
-  primaryButton: {
-    backgroundColor: colors.heading,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: colors.surface,
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  secondaryButton: {
-    backgroundColor: '#eef3ef',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: colors.heading,
-    fontWeight: '700',
-    fontSize: 16,
-  },
+
 });
