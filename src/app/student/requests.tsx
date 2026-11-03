@@ -3,6 +3,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '@/components/screen';
 import { studentDemoService, type StudentRequestView } from '@/features/student/service';
 
+const statusStyles: Record<string, { box: any; text: string }> = {
+  pending: { box: { backgroundColor: '#fff4d9', borderColor: '#d9b765' }, text: '#8a6210' },
+  approved: { box: { backgroundColor: '#eaf8ee', borderColor: '#6dbc82' }, text: '#1d6a42' },
+  rejected: { box: { backgroundColor: '#fdece8', borderColor: '#d57a66' }, text: '#9a3e2c' },
+  delivered: { box: { backgroundColor: '#eaf2ff', borderColor: '#6d8fd9' }, text: '#234ea8' },
+  cancelled: { box: { backgroundColor: '#f2f2f2', borderColor: '#b7b7b7' }, text: '#5f5f5f' },
+};
+
 export default function RequestsScreen() {
   const [requests, setRequests] = useState<StudentRequestView[]>([]);
   const [deliveryCodes, setDeliveryCodes] = useState<Record<string, { code: string; expiresAt: string }>>({});
@@ -23,17 +31,11 @@ export default function RequestsScreen() {
   }, []);
 
   useEffect(() => {
-    let active = true;
+    const timer = setTimeout(() => {
+      void refreshRequests();
+    }, 0);
 
-    const load = async () => {
-      await refreshRequests();
-      if (!active) return;
-    };
-
-    void load();
-    return () => {
-      active = false;
-    };
+    return () => clearTimeout(timer);
   }, [refreshRequests]);
 
   const handleIssueCode = async (requestId: string) => {
@@ -57,17 +59,21 @@ export default function RequestsScreen() {
 
   return (
     <Screen title="Taleplerim">
+      <Text style={styles.note}>Örnek mod: bu ekranda geçici servisle çalışan talepler listeleniyor.</Text>
       {requests.length === 0 ? (
         <Text style={styles.empty}>Henüz talep oluşturulmadı.</Text>
       ) : (
         requests.map(({ request, listingTitle, projectName, statusLabel }) => {
           const code = deliveryCodes[request.id];
+          const style = statusStyles[request.status] ?? statusStyles.pending;
 
           return (
             <View key={request.id} style={styles.card}>
+              <View style={[styles.statusBadge, style.box]}>
+                <Text style={[styles.statusText, { color: style.text }]}>{statusLabel}</Text>
+              </View>
               <Text style={styles.heading}>{projectName}</Text>
               <Text style={styles.body}>{listingTitle}</Text>
-              <Text style={styles.body}>Durum: {statusLabel}</Text>
               <Text style={styles.body}>Adet: {request.quantity}</Text>
 
               {request.status === 'approved' && !code ? (
@@ -76,11 +82,12 @@ export default function RequestsScreen() {
                 </Pressable>
               ) : null}
 
-              {code ? (
+              {request.status === 'approved' && code ? (
                 <View style={styles.codeBox}>
                   <Text style={styles.codeLabel}>Teslim kodu</Text>
                   <Text style={styles.code}>{code.code}</Text>
-                  <Text style={styles.body}>Bitiş: {new Date(code.expiresAt).toLocaleString('tr-TR')}</Text>
+                  <Text style={styles.body}>Geçerlilik: {new Date(code.expiresAt).toLocaleString('tr-TR')}</Text>
+                  <Text style={styles.warning}>Bu kodu işletmeye gösteriniz.</Text>
                 </View>
               ) : null}
 
@@ -98,6 +105,15 @@ export default function RequestsScreen() {
 }
 
 const styles = StyleSheet.create({
+  note: {
+    color: '#6b582e',
+    backgroundColor: '#fff3d7',
+    padding: 14,
+    borderRadius: 12,
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
   loading: {
     color: '#3d5148',
     fontSize: 16,
@@ -114,6 +130,17 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 8,
     marginBottom: 16,
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   heading: {
     color: '#16493e',
@@ -137,9 +164,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   codeBox: {
-    backgroundColor: '#edf5ee',
+    backgroundColor: '#f4f9f5',
     borderRadius: 12,
-    padding: 12,
+    borderWidth: 1,
+    borderColor: '#dce8de',
+    padding: 16,
     gap: 6,
   },
   codeLabel: {
@@ -150,8 +179,13 @@ const styles = StyleSheet.create({
   code: {
     color: '#16493e',
     fontWeight: '800',
-    letterSpacing: 3,
-    fontSize: 26,
+    letterSpacing: 5,
+    fontSize: 30,
+  },
+  warning: {
+    color: '#7f6138',
+    fontWeight: '600',
+    fontSize: 13,
   },
   secondaryButton: {
     backgroundColor: '#eef3ef',

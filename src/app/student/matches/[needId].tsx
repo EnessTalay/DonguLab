@@ -10,6 +10,7 @@ export default function MatchListScreen() {
   const routeNeedId = Array.isArray(needId) ? needId[0] : needId;
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -30,11 +31,16 @@ export default function MatchListScreen() {
   }, [routeNeedId]);
 
   const handleRequest = async (listingId: string, needQuantity: number) => {
-    if (!routeNeedId) return;
+    if (!routeNeedId || submittingId) return;
 
-    const request = await studentDemoService.createRequest(routeNeedId, listingId, needQuantity);
-    if (request) {
-      router.push('/student/requests');
+    setSubmittingId(listingId);
+    try {
+      const request = await studentDemoService.createRequest(routeNeedId, listingId, needQuantity);
+      if (request) {
+        router.push('/student/requests');
+      }
+    } finally {
+      setSubmittingId(null);
     }
   };
 
@@ -51,35 +57,50 @@ export default function MatchListScreen() {
       {matches.length === 0 ? (
         <Text style={styles.empty}>Uygun ilan bulunamadı.</Text>
       ) : (
-        matches.map((match) => (
-          <View key={match.listing.id} style={[styles.card, !match.eligible ? styles.cardDisabled : null]}>
-            <Text style={styles.heading}>{match.listing.title}</Text>
-            <Text style={styles.body}>Tür: {match.listing.materialType === 'wood' ? 'Ahşap' : match.listing.materialType === 'metal' ? 'Metal' : 'Plastik'}</Text>
-            <Text style={styles.body}>Ölçü: {match.listing.widthMm} × {match.listing.heightMm} mm</Text>
-            <Text style={styles.body}>Kalınlık: {match.listing.thicknessMm === null ? 'Doğrulanmalı' : `${match.listing.thicknessMm} mm`}</Text>
-            <Text style={styles.body}>Kullanılabilir stok: {match.listing.quantityOnHand - match.listing.quantityReserved}</Text>
-            <Text style={styles.body}>Bölge: {match.listing.region}</Text>
-            <Text style={styles.body}>Son teslim: {match.listing.pickupDeadline}</Text>
-            <View style={styles.reasonBox}>
-              {match.reasons.map((reason) => (
-                <Text key={reason} style={styles.reason}>{reason}</Text>
-              ))}
-            </View>
+        matches.map((match) => {
+          const thicknessMissing = match.listing.thicknessMm === null;
+          const isActionDisabled = !match.eligible || thicknessMissing || submittingId === match.listing.id;
+          const statusBoxStyle = match.eligible ? styles.successBox : thicknessMissing ? styles.warningBox : styles.infoBox;
+          const statusText = match.eligible
+            ? 'Ölçü ve tür projeniz için uygun'
+            : thicknessMissing
+              ? 'Ölçü uygun fakat kalınlık doğrulanmalı'
+              : 'Bu ilan uygun değil';
 
-            {match.eligible ? (
-              <Pressable style={styles.primaryButton} onPress={() => void (async () => {
-                const need = await studentDemoService.getNeed(routeNeedId ?? '');
-                if (need) {
-                  await handleRequest(match.listing.id, need.quantity);
-                }
-              })()}>
-                <Text style={styles.primaryButtonText}>Talep gönder</Text>
+          return (
+            <View key={match.listing.id} style={[styles.card, !match.eligible ? styles.cardDisabled : null]}>
+              <Text style={styles.heading}>{match.listing.title}</Text>
+              <Text style={styles.body}>Tür: {match.listing.materialType === 'wood' ? 'Ahşap' : match.listing.materialType === 'metal' ? 'Metal' : 'Plastik'}</Text>
+              <Text style={styles.body}>Ölçü: {match.listing.widthMm} × {match.listing.heightMm} × {match.listing.thicknessMm ?? 'kalınlık bekleniyor'} mm</Text>
+              <Text style={styles.body}>Kullanılabilir adet: {match.listing.quantityOnHand - match.listing.quantityReserved}</Text>
+              <Text style={styles.body}>Bölge: {match.listing.region}</Text>
+              <Text style={styles.body}>Son teslim: {match.listing.pickupDeadline}</Text>
+
+              <View style={[styles.reasonBox, statusBoxStyle]}>
+                <Text style={styles.reason}>{statusText}</Text>
+                {match.reasons.map((reason) => (
+                  <Text key={reason} style={styles.reason}>{reason}</Text>
+                ))}
+              </View>
+
+              <Pressable
+                disabled={isActionDisabled}
+                style={[styles.primaryButton, isActionDisabled ? styles.primaryButtonDisabled : null]}
+                onPress={() => {
+                  if (!routeNeedId) return;
+                  void (async () => {
+                    const need = await studentDemoService.getNeed(routeNeedId);
+                    if (need) {
+                      await handleRequest(match.listing.id, need.quantity);
+                    }
+                  })();
+                }}
+              >
+                <Text style={styles.primaryButtonText}>{submittingId === match.listing.id ? 'Gönderiliyor...' : 'Talep Gönder'}</Text>
               </Pressable>
-            ) : (
-              <Text style={styles.ineligible}>Uygun değil; talep gönderilemez.</Text>
-            )}
-          </View>
-        ))
+            </View>
+          );
+        })
       )}
     </Screen>
   );
@@ -119,9 +140,17 @@ const styles = StyleSheet.create({
   },
   reasonBox: {
     borderRadius: 12,
-    backgroundColor: '#edf5ee',
     padding: 10,
     gap: 6,
+  },
+  successBox: {
+    backgroundColor: '#ebf8ee',
+  },
+  warningBox: {
+    backgroundColor: '#fff1d9',
+  },
+  infoBox: {
+    backgroundColor: '#edf3ff',
   },
   reason: {
     color: '#2e4e44',
@@ -134,14 +163,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
+  primaryButtonDisabled: {
+    backgroundColor: '#b7c8bc',
+  },
   primaryButtonText: {
     color: '#fff',
     fontWeight: '700',
     fontSize: 15,
-  },
-  ineligible: {
-    color: '#7f6138',
-    fontWeight: '600',
-    fontSize: 14,
   },
 });
