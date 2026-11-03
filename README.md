@@ -48,22 +48,31 @@ veya mağaza sürümü içermez; Expo Go geliştirme amaçlıdır.
 | `npm start` | Expo geliştirme sunucusu |
 | `npm run web` | Tarayıcıda geliştirme |
 | `npm run check` | TypeScript ve lint kontrolü |
+| `npm test` | Demo servis ve SQL/RLS davranış testleri |
 | `npm run export:web` | `dist/` içine statik web çıktısı |
 | `npm run doctor` | Expo bağımlılık ve yapılandırma teşhisi |
 
-GitHub Actions, Windows/macOS/Linux üzerinde temiz kurulum, tip/lint kontrolü ve
+GitHub Actions, Windows/macOS/Linux üzerinde temiz kurulum, tip/lint, servis/SQL testleri ve
 web dışa aktarımını çalıştıracak şekilde yapılandırılmıştır. Fiziksel telefon
 kontrolü ayrıca yapılmalıdır.
 
 ## Bu sürümün kapsamı
 
-Hazır: rol seçimi başlangıç ekranı, öğrenci/işletme örnek liste ekranları, ortak
-veri tipleri, dört örnek ilan ve bir öğrenci ihtiyacı, örnek servis sözleşmesi.
+Hazır: ortak servis sözleşmesi, işlevsel yerel demo, Supabase adaptörü,
+giriş/çıkış ve oturum/rol yönlendirmesi; tablo/RLS migration'ı, talep/onay/iptal,
+atomik stok ve kodla teslim SQL işlemleri. Enes'in **Altyapı test ekranı** bütün
+akışı formlar bitmeden denemeyi sağlar. Mevcut öğrenci/işletme ürün ekranları
+başlangıç örneklerini gösterir; ekip formları ve Emine'nin eşleştirme motoru henüz yok.
 
-Henüz yok: Supabase Auth/veritabanı, gerçek yetkilendirme, ihtiyaç/ilan kaydetme,
-eşleştirme motoru, talep/onay, atomik stok rezervasyonu ve teslim kodu.
-Rol seçimi bir oturum açma işlemi değildir. Örnek veriler salt okunur;
-cihazlar arasında veri senkronizasyonu yapılmaz.
+Varsayılan **demo modu** hesap gerektirmez: Giriş ekranındaki Demo Öğrenci /
+Demo İşletme düğmelerini kullanın. Yerel hesap e-postaları `ogrenci@demo.local` ve
+`isletme@demo.local`, parolası `Demo123!`. Veriler bellektedir, sayfa yenilenince
+silinir ve farklı cihaz/sekme ile paylaşılmaz. Hesaplar arasında uygulamanın
+Çıkış/Giriş düğmeleriyle geçiş yapın. Kod üretimi ve stok denemesi test ekranındadır.
+
+Gerçek sunucuya geçiş için [Supabase kurulum rehberi](docs/supabase-setup.md).
+Henüz canlı Supabase projesi yapılandırılmadı; gerçek Auth/cihazlar arası kabul
+testi yapılmadı. Eksik gerçek bağlantı sessizce demo moduna dönmez.
 
 ## Ekip için dosya yapısı
 
@@ -73,15 +82,17 @@ src/app/student/         Fatmanur: öğrenci ekranları
 src/app/business/        Canan: işletme ekranları
 src/components/          Ortak ekran ve görünüm bileşenleri
 src/types/domain.ts      Ortak veri sözleşmesi
-src/services/demo.ts     Örnek veriler ve servis arayüzü
+src/services/            Ortak sözleşme, demo/Supabase servisleri ve oturum
+supabase/                Migration, seed ve cron kurulumu
 src/matching/            Emine: eşleştirme geliştirme alanı
 docs/                   Mimari ve geliştirme notları
 ```
 
-Enes: altyapı, kimlik ve gerçek veri servisleri. Mevcut tasarımın uygulama planı
-[docs/architecture.md](docs/architecture.md) içinde. Ekipte `package-lock.json`
+Enes: altyapı, kimlik ve gerçek veri servisleri. [Servis sözleşmesi](docs/service-contract.md)
+ve [Enes teslim/entegrasyon notları](docs/enes-handoff.md) ekip için giriş noktasıdır.
+Ekipte `package-lock.json`
 commitlenmeli; sürüm yükseltmeleri birlikte yapılmalı. Gerçek servisler eklenirken
-`.env.example` güncellenmeli. Supabase yönetici anahtarı uygulamaya konmamalı.
+`.env.example` güncel tutulmalı. Supabase yönetici anahtarı uygulamaya konmamalı.
 
 Kurulum kaynakları: [Expo proje oluşturma](https://docs.expo.dev/get-started/create-a-project/),
 [SDK 57 belgeleri](https://docs.expo.dev/versions/v57.0.0/).
