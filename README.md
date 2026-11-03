@@ -1,5 +1,10 @@
 # DöngüLab
 
+> **Güncel başlangıç envanteri:** [Paket 1 — mevcut durum ve eksik haritası](docs/package-1-baseline.md).
+> Aşağıdaki ilk kurulum/kapsam anlatımının bazı bölümleri eski altyapı tesliminden
+> kalmıştır. Özellikle varsayılan mod ve ürün ekranları için Paket 1 belgesini esas alın;
+> bu metinlerin yenilenmesi Paket 2'de kayıtlıdır.
+
 İşletmelerin kullanılabilir artık malzemelerini öğrencilerin projeleriyle
 buluşturan mobil uygulamanın geliştirme başlangıcı. React Native + Expo SDK 57 +
 Expo Router + TypeScript; aynı kaynak kod Android, iOS ve web için kullanılır.
