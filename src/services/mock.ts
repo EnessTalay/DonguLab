@@ -1,3 +1,4 @@
+import { demoAccounts } from '../fixtures/demo';
 import type { Listing, MaterialRequest, Need } from '../types/domain';
 import { AppError, type AppServices, type AppSession, type Profile } from './contracts';
 import { assertRequestEligible, istanbulDate, validateListing, validateNeed } from './validation';
@@ -9,10 +10,6 @@ export interface DemoStore {
   requests: StoredRequest[];
   sequence: number;
 }
-export const demoAccounts = [
-  { email: 'ogrenci@demo.local', password: 'Demo123!', profile: { id: 'demo-student', role: 'student', displayName: 'Demo Öğrenci' } },
-  { email: 'isletme@demo.local', password: 'Demo123!', profile: { id: 'demo-business', role: 'business', displayName: 'Demo İşletme' } },
-] as const;
 export function createDemoStore(listings: readonly Listing[] = [], needs: readonly Need[] = []): DemoStore {
   // Independent test/demo state, never mutate exported fixture objects.
   return { listings: copy([...listings]), needs: copy([...needs]), requests: [], sequence: 0 };

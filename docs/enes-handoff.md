@@ -1,5 +1,9 @@
 # Enes: teslim ve entegrasyon
 
+> Tarihsel teslim/inceleme kaydıdır. Güncel kod yapısı için [mimari](architecture.md),
+> mevcut sözleşme için [servis belgesi](service-contract.md), değişiklikler için
+> [Paket 2](package-2-structure.md) esas alınmalıdır. Aşağıdaki test sonuçları kendi dönemine aittir.
+
 ## İlk teslim
 
 `66fbc70` commit'i: ortak `AppServices`, girdi/DTO/hata tipleri ve çalışan yerel

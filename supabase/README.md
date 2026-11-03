@@ -1,5 +1,9 @@
 # DöngüLab veritabanı
 
+Güncel kurulum: [Supabase rehberi](../docs/supabase-setup.md).
+Gerçek öğrenci kaydı ve yöneticiyle işletme rolü: [hesap akışı](../docs/real-user-rollout.md).
+Aşağıdaki seed adımları yalnız örnek veriler içindir.
+
 Adım adım kurulum: [docs/supabase-setup.md](../docs/supabase-setup.md).
 
 1. Yeni projede migrations/202611030001_core.sql çalıştırılır.

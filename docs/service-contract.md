@@ -1,41 +1,61 @@
-# Ekip için ilk teslim: servis sözleşmesi
+# Ortak servis sözleşmesi
 
-Kesin tipler `src/services/contracts.ts` içinde. Mevcut `domain.ts` alanları
-değişmedi. `demo.ts` içindeki eski örnekler ve `ListingService.list()` geriye
-uyumluluk için duruyor; yeni kod `AppServices` kullanmalı.
+Güncel tipler: `src/services/contracts.ts`; ortak domain:
+`src/types/domain.ts`. Ürün ekranları `services` nesnesini veya bunun öğrenci
+wrapper'ını kullanır; doğrudan veritabanı sorgusu yazmaz.
 
-`createDemoServices(createDemoStore(demoListings, [demoNeed]))` aynı servis
-imzalarıyla oturum, kayıt, talep, onay, iptal ve kodla teslimi bellekte çalıştırır.
-Demo hesapları `ogrenci@demo.local` / `isletme@demo.local`, parola `Demo123!`.
-Bunlar yalnız örnek hesaplardır. Yeniden yükleme verileri siler; başka cihazla
-paylaşılmaz; demo adaptörü bir güvenlik sınırı değildir.
+## Kimlik ve adaptörler
 
-İlk başlangıç: Fatmanur ve Canan `AppServices` tipini kullanır; bileşenlerine
-servis enjekte edebilir. Enes'in bağlantı tamamlandığında sunacağı `services`
-nesnesinde aynı metotlar bulunacak. UI içinde Supabase sorgusu yazmayın.
+Varsayılan `supabase`; `.env` ile açıkça `demo` seçilebilir. Yanlış gerçek
+yapılandırma demo başarısına dönüşmez. İki adaptör AppServices uygular.
+Yerel demo kayıt açmayı desteklemez, bellekteki örnek hesapları kullanır.
 
-- `createListing(input)`: id, businessId, quantityReserved girilmez.
-- `createNeed(input)`: id, studentId girilmez.
-- `createRequest(needId, listingId)`: ihtiyaç miktarı sunucudan alınır.
-- `listMyRequests` / `listIncomingRequests`: request, listingTitle, projectName,
-  expiresAt içerir; kod veya hash içermez.
-- `issueDeliveryCode(requestId)`: açık bir oluştur/yenile eylemidir. Kod yalnız
-  bu cevapta öğrenciye verilir; yenisi eskisini iptal eder. Tekrar girişte eski kod
-  okunamaz; kullanıcı yenisini üretir. Kod en fazla 10 kez üretilebilir ve 5 yanlış
-  deneme limiti yenilemede sıfırlanmaz.
-- Hatalar `AppError {code, message}` şeklinde fırlatılır; işlemi başarısızsa UI
-  başarı göstermemeli. Talep süresi dolduğunda cancelled olur.
+| İşlem | Davranış |
+| --- | --- |
+| signIn | E-posta/parola ile AppSession döndürür |
+| signUp | Gerçek hesap oluşturur; confirmationRequired sonucu verir; rol göndermez |
+| signOut | Oturumu kapatır |
+| getSession / onAuthStateChange | Sunucudaki profile göre oturum/rol sağlar |
+| listListings / listMyListings | Oturumla görülebilen ilanlar / işletmenin kendi ilanları |
+| createListing | id, businessId, quantityReserved sunucudan gelir |
+| createNeed / listMyNeeds | İhtiyaç kaydı / öğrencinin kendi ihtiyaçları; sahiplik sunucudadır |
+| createRequest | needId ve listingId alır; miktar ihtiyaçtan okunur |
+| listMyRequests / listIncomingRequests | Talep, ilan/proje adı ve expiresAt; açık kod/hash içermez |
+| approveRequest / rejectRequest / cancelRequest | Rol, sahiplik, durum ve stok kontrolleriyle işlem |
+| issueDeliveryCode | Öğrenciye yalnız bu cevapta açık kod ve expiresAt verir |
+| confirmDelivery | İşletme kodu doğrular; teslim ve stok işlemi bir kez uygulanır |
 
-Kurallar: ihtiyacın tamamını tek ilan karşılar. Bir ihtiyaç için aynı anda bir
-pending/approved veya tamamlanmış delivered talep bulunabilir. Aynı aktif
-talebin tekrar oluşturulması aynı kaydı döndürür; iptal/ret sonrasında yeniden
-talep mümkündür. Onayda stok yeniden denetlenir. Rezervasyon 2 saat, ilan ve
-ihtiyaç tarihlerinin İstanbul gün sonlarından en erken olanına kadar sürer.
-Son tarih ihtiyaç tarihinden önce olsa da bugün teslim mümkünse uygundur.
+`AppError` code/message taşır. Kullanıcı mesajları ortak yardımcı veya bağlamsal
+özellik sözlüğüyle gösterilir. Başarılı mutasyondan sonra yenileme başarısızsa
+komutun başarısız olduğu söylenmemeli veya komut otomatik tekrarlanmamalıdır.
 
-`services/validation.ts` demo işlemlerinin giriş/uygunluk kontrolüdür, UI için
-eşleştirme motoru değildir. Emine `src/matching` fonksiyonlarını geliştirecek;
-sıralama/açıklama o modülden gelecek. Enes SQL kurallarıyla pariteyi doğrulayacak.
+## Mevcut iş kuralları
 
-İlk teslim testi: `node --test tests/service.test.cjs`. İki demo servis istemcisinin
-ortak store kullanması, öğrenci/işletme işlemlerini testte ayrı oturumlarla dener.
+- İhtiyacın tamamını tek ilan karşılar; miktarlar pozitif tam sayıdır.
+- Öğrenci kalınlığı zorunludur. İlan kalınlığı null olabilir; böyle ilan talep alamaz.
+- Tür, tam kalınlık, normalize edilmiş bölge, döndürülerek sığma, stok ve tarihler kontrol edilir.
+- Aynı ihtiyaç için pending/approved/delivered talep sınırı vardır. Aynı aktif
+  talebin tekrar oluşturulması aynı kaydı döndürür; iptal/ret sonrası tekrar talep mümkündür.
+- Talep gönderirken stok ayrılmaz; onayda tekrar denetlenip ayrılır.
+- Rezervasyon 2 saat ve ilan/ihtiyaç tarihlerinin İstanbul gün sonlarıyla sınırlıdır.
+  Son teslim tarihi ihtiyaç tarihinden önce olsa da bugün teslim mümkünse uygundur.
+- İptal veya süre dolumu rezervasyonu serbest bırakır; teslim toplam/ayrılmış stoğu düşürür.
+- Kod yenileme eski kodu iptal eder. En fazla 10 üretim, 5 yanlış deneme vardır;
+  yenileme yanlış deneme sayısını sıfırlamaz. Kod tekrar girişte okunamaz, yeniden üretilir.
+
+## Uygulama dosyaları
+
+- `services/supabase.ts`: Auth, alan dönüşümleri, tablo okumaları ve RPC.
+- `services/mock.ts`: aynı sözleşmenin bellek içi uygulaması.
+- `fixtures/demo.ts`: örnek ilan/ihtiyaç ve demo hesap tanımları.
+- `services/validation.ts`: saf girdi ve işlem uygunluğu kuralları.
+- `features/student/service.ts`: liste üzerinden ihtiyaç bulma, matching ve durum etiketleri.
+- `features/student/matching.ts`: çalışan UI sıralaması/açıklamalar.
+- `lib/`: paylaşılan tarih, sayı, etiket ve hata yardımcıları.
+
+Eski `ListingService.list()` / `demoListingService` kaldırıldı; tüketicileri yoktu.
+İlan/ihtiyaç düzenleme, kapatma, arşiv, fotoğraf, bildirim ve yönetici onay paneli
+bu sözleşmede henüz bulunmaz. Yeni işlemler önce iş kurallarıyla tasarlanmalıdır.
+
+`npm test`, demo ve gerçek adaptör davranışlarını, gerçek migration üzerinde
+PGlite ile SQL/RLS kurallarını ve saf form/eşleşme/yardımcı fonksiyonlarını doğrular.

@@ -1,4 +1,4 @@
-import type { Listing, MaterialType, Need, RequestStatus } from '@/types/domain';
+import type { MaterialType } from '@/types/domain';
 
 export type NeedDraft = {
   projectName: string;
@@ -21,22 +21,3 @@ export interface NeedFormErrors {
   region?: string;
   neededBy?: string;
 }
-
-export interface MatchCard {
-  listing: Listing;
-  score: number;
-  reasons: string[];
-  eligible: boolean;
-}
-
-export interface RequestStateView {
-  id: string;
-  projectName: string;
-  listingTitle: string;
-  status: RequestStatus;
-  quantity: number;
-  code?: string;
-  expiresAt?: string;
-}
-
-export type NeedSnapshot = Need;

@@ -1,3 +1,4 @@
+import { errorMessage } from '@/lib/errors';
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 
@@ -10,22 +11,34 @@ export function useFocusedResource<T>(load: () => Promise<T>) {
   const generation = useRef(0);
   const reload = useCallback(async () => {
     const ticket = ++generation.current;
-    if (active.current) { setLoading(true); setError(''); }
+    if (active.current) {
+      setLoading(true);
+      setError('');
+    }
     try {
       const result = await load();
-      if (active.current && ticket === generation.current) { setData(result); return true; }
+      if (active.current && ticket === generation.current) {
+        setData(result);
+        return true;
+      }
     } catch (e) {
-      if (active.current && ticket === generation.current) setError(e instanceof Error ? e.message : 'Bilgiler yüklenemedi.');
+      if (active.current && ticket === generation.current)
+        setError(errorMessage(e, 'Bilgiler yüklenemedi.'));
     } finally {
       if (active.current && ticket === generation.current) setLoading(false);
     }
     return false;
   }, [load]);
-  useFocusEffect(useCallback(() => {
-    active.current = true;
-    setData(null);
-    void reload();
-    return () => { active.current = false; generation.current++; };
-  }, [reload]));
+  useFocusEffect(
+    useCallback(() => {
+      active.current = true;
+      setData(null);
+      void reload();
+      return () => {
+        active.current = false;
+        generation.current++;
+      };
+    }, [reload]),
+  );
   return { data, loading, error, reload };
 }

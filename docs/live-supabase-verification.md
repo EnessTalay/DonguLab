@@ -1,5 +1,9 @@
 # Canlı Supabase kurulum doğrulaması
 
+> Tarihsel teslim/inceleme kaydıdır. Güncel kod yapısı için [mimari](architecture.md),
+> mevcut sözleşme için [servis belgesi](service-contract.md), değişiklikler için
+> [Paket 2](package-2-structure.md) esas alınmalıdır. Aşağıdaki test sonuçları kendi dönemine aittir.
+
 3 Kasım 2026 tarihinde `wtvsppqiimzlrsbgraas` projesine kurulum uygulandı.
 Bu belge önceki teslimdeki "canlı proje henüz yok" notunun devamıdır.
 

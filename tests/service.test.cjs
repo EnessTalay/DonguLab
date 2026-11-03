@@ -154,3 +154,29 @@ test('matching puts eligible listings first even when invalid records score equa
   assert.equal(result[0].eligible, true);
   assert.equal(result[1].eligible, false);
 });
+
+test('extracted listing form preserves optional thickness and decimal input contract', () => {
+  const { parseListingForm } = require('../src/features/business/listing-form.ts');
+  const { validateListing } = require('../src/services/validation.ts');
+  const form = { title: ' Workshop ', widthMm: '600,5', heightMm: '400', thicknessMm: '',
+    quantityOnHand: '5', region: ' Istanbul ', pickupDeadline: '2030-01-08' };
+  const result = parseListingForm(form, 'wood');
+  assert.deepEqual(result.errors, {});
+  assert.equal(result.input.thicknessMm, null);
+  assert.equal(result.input.widthMm, 600.5);
+  assert.equal(result.input.title, 'Workshop');
+  assert.doesNotThrow(() => validateListing(result.input, '2030-01-01'));
+  assert.ok(parseListingForm({ ...form, quantityOnHand: '1.5' }, 'wood').errors.quantityOnHand);
+  assert.ok(parseListingForm({ ...form, thicknessMm: 'bad' }, 'wood').errors.thicknessMm);
+  assert.ok(parseListingForm({ ...form, pickupDeadline: '2030-02-30' }, 'wood').errors.pickupDeadline);
+});
+
+test('shared date helpers retain Istanbul day boundaries and strict calendar validation', () => {
+  const { istanbulDate, validDate, dateFromIstanbulDate, formatDateTime } = require('../src/lib/dates.ts');
+  assert.equal(istanbulDate(new Date('2030-01-01T20:59:59Z')), '2030-01-01');
+  assert.equal(istanbulDate(new Date('2030-01-01T21:00:00Z')), '2030-01-02');
+  assert.equal(istanbulDate(dateFromIstanbulDate('2030-01-02')), '2030-01-02');
+  assert.equal(validDate('2030-02-29'), false);
+  assert.equal(validDate('2032-02-29'), true);
+  assert.equal(formatDateTime('not-a-date'), null);
+});

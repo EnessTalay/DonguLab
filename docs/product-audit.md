@@ -1,5 +1,9 @@
 # Uygulama içi düzenleme — 3 Kasım 2026
 
+> Tarihsel teslim/inceleme kaydıdır. Güncel kod yapısı için [mimari](architecture.md),
+> mevcut sözleşme için [servis belgesi](service-contract.md), değişiklikler için
+> [Paket 2](package-2-structure.md) esas alınmalıdır. Aşağıdaki test sonuçları kendi dönemine aittir.
+
 Bu çalışma yayın, mağaza veya bildirim entegrasyonu yerine mevcut öğrenci ve
 işletme akışlarının tutarlılığına odaklanır.
 

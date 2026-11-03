@@ -1,5 +1,9 @@
 # Integrated team snapshot
 
+> Tarihsel teslim/inceleme kaydıdır. Güncel kod yapısı için [mimari](architecture.md),
+> mevcut sözleşme için [servis belgesi](service-contract.md), değişiklikler için
+> [Paket 2](package-2-structure.md) esas alınmalıdır. Aşağıdaki test sonuçları kendi dönemine aittir.
+
 - Base: DonguLab-codex-enes-altyapi.zip; identical to the workspace before integration.
 - Student routes, form and matching: DonguLab-Fatmanur.zip.
 - Business listing, incoming request and delivery UI: DonguLab-Canan.zip (archive root is DonguLab-Emine).

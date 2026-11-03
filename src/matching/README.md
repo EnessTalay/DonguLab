@@ -1,6 +1,8 @@
-# Eşleştirme
+# Eşleştirme konumu
 
-Saf TypeScript eşleştirme fonksiyonları burada geliştirilecek. Tür, kalınlık,
-döndürülerek sığma, kullanılabilir stok, bölge ve teslim tarihleri kontrol edilmeli.
-Eksik kalınlık kesin uygun sayılmamalı. Sunucu talep onayında kuralları yeniden
-doğrulamalı. Şu an çalışan bir eşleştirme motoru bulunmuyor.
+Çalışan motor `src/features/student/matching.ts` içindedir:
+`matchListing` açıklamalı uygunluğu, `rankMatches` uygun kayıtları önceleyen
+sıralamayı sağlar. Öğrenci ekranı `features/student/service.ts` üzerinden kullanır.
+
+Sunucudaki işlem uygunluğu ayrıca `services/validation.ts` ve SQL migration'da
+denetlenir. Bu klasör eski ekip planındaki yer tutucudur; ikinci motor eklemeyin.

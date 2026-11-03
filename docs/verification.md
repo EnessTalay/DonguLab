@@ -1,5 +1,9 @@
 # Doğrulama notları
 
+> Tarihsel teslim/inceleme kaydıdır. Güncel kod yapısı için [mimari](architecture.md),
+> mevcut sözleşme için [servis belgesi](service-contract.md), değişiklikler için
+> [Paket 2](package-2-structure.md) esas alınmalıdır. Aşağıdaki test sonuçları kendi dönemine aittir.
+
 3 Kasım 2026, Windows üzerinde Node.js 22.23.4 kullanıldı. Sistem genelindeki
 Node.js 20 değiştirilmeden kontroller için ayrı Node.js 22 çalışma zamanı indirildi.
 

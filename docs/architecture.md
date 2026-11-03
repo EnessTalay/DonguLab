@@ -1,42 +1,86 @@
-# Geliştirme sözleşmesi
+# Uygulama mimarisi
 
-Bu belge başlangıç mimari planıdır. Enes'in servis, oturum ve SQL katmanı sonradan
-uygulandı; güncel durum için `docs/enes-handoff.md` ve `docs/supabase-setup.md`
-dosyalarını okuyun. Canlı Supabase bağlantısı henüz kurulmadı. Hedef ana akış:
+Paket 2 sonrası güncel yapı. Geçmiş teslim kayıtları `enes-handoff.md`,
+`verification.md`, `merge-notes.md` ve `live-supabase-verification.md` dosyalarıdır.
+Eksik haritasının başlangıç hali `package-1-baseline.md` içindedir.
 
-İlan oluştur → ihtiyaç gir → eşleşmeleri gör → talep gönder → işletme onayı →
-kodla teslim.
+## Katmanlar
 
-## Platform ve kurulum
+```text
+Expo Router girişleri (src/app)
+  → özellik ekranları (src/features)
+    → özellik bileşenleri ve hook'ları
+      → ortak AppServices sözleşmesi
+        → Supabase Auth / tablo okumaları / RPC
+        → veya açıkça seçilen bellek içi demo adaptörü
+```
 
-- Expo SDK 57, React Native, TypeScript ve Expo Router.
-- Node.js 22.23.4, npm ve kilitlenmiş `package-lock.json`.
-- İlk geliştirme web ve Expo Go üzerinden yapılır. Yerel native proje klasörleri
-  üretilmez; uygulama yapılandırması `app.json` içinde tutulur.
-- Gerçek veri katmanı için Supabase Auth ve PostgreSQL planlanır. Mevcut sürüm
-  varsayılan olarak demo modunda çalışır; Supabase adaptörü hazırdır ama proje bilgileri gerekir.
+Ekranlarda doğrudan Supabase sorgusu yazılmaz. Sunucuya yazma işlemleri
+`app_command` RPC'sinden geçer. Rol ve kayıt sahipliği istemci girdisine bırakılmaz.
 
-## Ortak alanlar
+## Rotalar ve sunum
 
-Ölçüler mm, miktarlar adet. Uygulama tiplerinde camelCase, ileride PostgreSQL
-tablolarında snake_case kullanılabilir; dönüşüm servis katmanında yapılmalı.
-Malzeme türleri `wood`, `metal`, `plastic`; arayüzde Türkçe açıklamalar kullanılır.
-Kalınlık bilinmiyorsa `null`; kesin uygun eşleşme olarak gösterilmez.
-Tarihler `YYYY-MM-DD` biçimindedir; teslim zamanı ve saat dilimi kuralları gerçek
-sunucu entegrasyonundan önce netleştirilmelidir.
+`src/app` içindeki ürün dosyaları yalnız özellik ekranını dışa aktarır. `_layout.tsx`
+dosyaları navigator ve rol korumalarını kurar. Mevcut rota adresleri korunur.
 
-## Sonraki işler
+`ScreenFrame` oturum veya router bilmeyen sunum kabuğudur. `AppNavigation`
+oturum/aktif rota bilgisini kullanır. `Screen` bu iki parçayı birleştiren kısa
+uyumluluk girişidir; ortak stilleri `theme/screen-styles.ts` üzerinden dışa aktarır.
 
-1. Öğrenci ihtiyaç formu ve işletme ilan formunu ortak tiplerle geliştirin.
-2. Eşleştirmede tür, kalınlık, döndürülerek sığma, stok, bölge ve tarihi doğrulayın.
-3. Supabase migration, profil/rol ilişkileri ve RLS politikalarını ekleyin.
-4. Gerçek oturum ve servisleri bağlayın; öğrenci/işletme sahipliğini sunucuda denetleyin.
-5. Talep/onay/iptal/teslim işlemlerini atomik PostgreSQL fonksiyonlarıyla yapın.
-   Onayda stok kilidi, tekrar çağrılarda idempotency, süre dolumunda tek seferlik
-   rezervasyon serbest bırakma gerekir.
-6. Teslim kodunu sunucuda üretip hash ile saklayın; süre, deneme ve tek kullanım
-   kontrollerini sunucuda uygulayın.
+Alanlar `InputField`, ana eylemler `ActionButton`, kartlar `Card`, durumlar
+`StatusBadge`, filtreler `ChoiceChips` ile paylaşılır. Renkler `theme/tokens.ts`,
+malzeme/durum metinleri `lib/labels.ts` içindedir. Özel ekran yerleşimleri kendi
+özellik dizininde kalır; tasarımın tamamlanması Paket 9 kapsamındadır.
 
-İlk uçtan uca kabul: iki gerçek hesap/cihaz aynı verileri görür; uygun taleple stok
-ayrılır; doğru kod bir kez teslim eder; başka kullanıcının verilerine yetkisiz
-erişim ve ikinci stok düşümü engellenir. Bu kabul henüz sağlanmış değildir.
+## İşletme özelliği
+
+- `BusinessScreen.tsx`: bölüm seçimi, metrikler ve alt bileşenlerin bileşimi.
+- `use-business.ts`: bölüm/filtre durumu ve alt hook'ların bileşimi.
+- `use-business-resources.ts`: ortak resource hook'u ile ilan/talep yükleme;
+  iki listenin yenileme sonuçlarını ayrı ayrı bildirir.
+- `use-listing-form.ts`: form durumu, tarih seçimi, gönderim ve yenileme sonucu.
+- `listing-form.ts`: saf girdi ayrıştırma, alan mesajları ve form tipleri.
+- `use-business-requests.ts`: onay, ret, teslim komutları ve işlem mesajları.
+- `components/`: ListingForm, PickupDateField, ListingList, IncomingRequests,
+  DeliveryConfirmation. Yalnız kullandıkları model alanlarını prop olarak alırlar.
+- `styles.ts` ve `errors.ts`: işletmeye özgü sunum ve bağlamsal hata metinleri.
+
+Form hook'u ekran seviyesinde yaşar; Yeni ilan ile diğer bölümler arasında
+geçiş form durumunu kaybettirmez. Başarılı kayıt sonrası liste yenilenemezse
+yeniden ilan oluşturulması engellenir; kullanıcı listeyi yeniden yükleyebilir.
+
+## Öğrenci özelliği
+
+Ekranlar `features/student/screens` içindedir. NeedForm ve saf `need-form.ts`
+formu yönetir. `matching.ts` çalışan uygunluk/sıralama motorudur.
+`service.ts`, ortak servisin öğrenciye yönelik liste/detay/etiket wrapper'ıdır.
+`types.ts` yalnız kullanılan form tiplerini içerir.
+
+## Veri yükleme
+
+Genel bakış, öğrenci listesi/detayı/eşleşmeleri/talepleri ve işletme listeleri
+`useFocusedResource` kullanır. Yükleyici `useCallback` ile sabitlenir.
+
+- Odakta yükler; `data`, `loading`, `error` ve `reload` sağlar.
+- Yeni istek eski isteği geçersiz kılar; odak kaybından sonra veri yazılmaz.
+- Yenileme başarılıysa true, hata/odak kaybında false döner.
+- Mutasyonun başarı durumu ile sonraki liste yenilemesi ayrı değerlendirilir.
+- Oturum başlangıcı ve geliştirici Workbench kendi özel yaşam döngülerini korur.
+
+## Ortak veri ve sunucu
+
+`types/domain.ts` ve `services/contracts.ts` alan/sözleşme kaynağıdır.
+`services/index.ts` adaptör seçer; varsayılan Supabase'dir. Demo yalnız açıkça
+seçilirse kullanılır. Demo verileri `fixtures/demo.ts` içinde tutulur.
+
+Tarihler `YYYY-MM-DD`, ölçüler mm, miktarlar adettir. `lib/dates.ts` İstanbul
+gününü ve takvim doğrulamasını; `lib/numbers.ts` ondalık ayrıştırmayı sağlar.
+`services/validation.ts` işlem kurallarını uygulamaya devam eder; tarih
+fonksiyonlarının eski dışa aktarımlarını uyumluluk için korur.
+
+Supabase tarafında profiles, listings, needs, requests ve deliveries tabloları;
+RLS, app_command, list_request_views ve refresh_reservations bulunur. Stok
+değişimleri atomiktir. Yeni profil öğrenci olur; işletme rolü yönetici tarafından atanır.
+
+Paket 2 yeni alan, migration, bağımlılık veya iş kuralı eklemez. Düzenleme,
+arşivleme ve ilan kapatma işlemleri sonraki paketlerin kapsamıdır.
