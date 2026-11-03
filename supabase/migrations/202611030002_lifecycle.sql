@@ -187,4 +187,3 @@ exception
   when unique_violation then return app_private.failure('CONFLICT','Bu işlem zaten kaydedilmiş.');
   when foreign_key_violation then return app_private.failure('NOT_FOUND','İlişkili kayıt bulunamadı.');
 end $$;
-
