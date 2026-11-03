@@ -1,7 +1,8 @@
 # Geliştirme sözleşmesi
 
-Bu depo uygulamanın başlangıç iskeletidir; aşağıdaki gerçek sunucu akışı henüz
-uygulanmamıştır. Planlanan ana akış:
+Bu belge başlangıç mimari planıdır. Enes'in servis, oturum ve SQL katmanı sonradan
+uygulandı; güncel durum için `docs/enes-handoff.md` ve `docs/supabase-setup.md`
+dosyalarını okuyun. Canlı Supabase bağlantısı henüz kurulmadı. Hedef ana akış:
 
 İlan oluştur → ihtiyaç gir → eşleşmeleri gör → talep gönder → işletme onayı →
 kodla teslim.
@@ -13,7 +14,7 @@ kodla teslim.
 - İlk geliştirme web ve Expo Go üzerinden yapılır. Yerel native proje klasörleri
   üretilmez; uygulama yapılandırması `app.json` içinde tutulur.
 - Gerçek veri katmanı için Supabase Auth ve PostgreSQL planlanır. Mevcut sürüm
-  herhangi bir Supabase projesine bağlanmaz.
+  varsayılan olarak demo modunda çalışır; Supabase adaptörü hazırdır ama proje bilgileri gerekir.
 
 ## Ortak alanlar
 

@@ -1,0 +1,149 @@
+const { test, before, after } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { PGlite } = require('@electric-sql/pglite');
+let db;
+const S = '10000000-0000-0000-0000-000000000001';
+const B = '10000000-0000-0000-0000-000000000002';
+const OTHER = '10000000-0000-0000-0000-000000000003';
+const OTHER_B = '10000000-0000-0000-0000-000000000004';
+async function actor(id) {
+  await db.exec('reset role');
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id ?? '']);
+  await db.exec(id ? 'set role authenticated' : 'set role anon');
+}
+async function cmd(action, payload, id) {
+  await actor(id);
+  return (await db.query('select public.app_command($1,$2::jsonb) as result', [action, JSON.stringify(payload)])).rows[0].result;
+}
+const ok = result => { assert.equal(result.ok, true, JSON.stringify(result)); return result.data; };
+const rejected = (result, code) => { assert.equal(result.ok, false); assert.equal(result.error.code, code); };
+const future = () => { const d = new Date(); d.setUTCDate(d.getUTCDate() + 5); return d.toISOString().slice(0,10); };
+const listingInput = () => ({ title: 'Test ahşap', materialType: 'wood', widthMm: 600, heightMm: 400,
+  thicknessMm: 6, quantityOnHand: 5, region: 'İstanbul', pickupDeadline: future() });
+const needInput = () => ({ projectName: 'Test maket', materialType: 'wood', widthMm: 300, heightMm: 200,
+  thicknessMm: 6, quantity: 3, region: 'İSTANBUL', neededBy: future() });
+async function fixture() {
+  const l = ok(await cmd('create_listing', listingInput(), B));
+  const n = ok(await cmd('create_need', needInput(), S));
+  const r = ok(await cmd('create_request', { needId: n.id, listingId: l.id }, S));
+  return { l,n,r };
+}
+async function stock(id) {
+  await actor(B);
+  return (await db.query('select quantity_on_hand,quantity_reserved from public.listings where id=$1',[id])).rows[0];
+}
+before(async () => {
+  db = new PGlite();
+  // Only the platform auth facade is stubbed; run the actual unchanged migration.
+  await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
+    create schema auth;
+    create table auth.users(id uuid primary key, email text, raw_user_meta_data jsonb default '{}');
+    create function auth.uid() returns uuid language sql stable as
+      $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+    grant usage on schema auth to anon, authenticated;
+    grant execute on function auth.uid() to anon, authenticated;`);
+  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/202611030001_core.sql'),'utf8'));
+  for (const [id,email] of [[S,'s@test'],[B,'b@test'],[OTHER,'other@test'],[OTHER_B,'b2@test']]) {
+    await db.query("insert into auth.users(id,email,raw_user_meta_data) values($1,$2,'{\"role\":\"business\"}')",[id,email]);
+  }
+  await db.query("update public.profiles set role='business' where id in ($1,$2)",[B,OTHER_B]);
+});
+after(async () => { if (db) await db.close(); });
+
+test('SQL role assignment ignores user metadata; RLS and grants prevent escalation', async () => {
+  await actor(S);
+  assert.equal((await db.query('select role from public.profiles')).rows[0].role,'student');
+  await assert.rejects(db.exec("update public.profiles set role='business'"), /permission denied/i);
+  await assert.rejects(db.exec('select * from public.deliveries'), /permission denied/i);
+  await assert.rejects(db.exec("select app_private.actor_role()"), /permission denied/i);
+  rejected(await cmd('create_listing',listingInput(),S),'FORBIDDEN');
+  await actor(null);
+  assert.equal((await db.query("select has_function_privilege('anon','public.app_command(text,jsonb)','execute') as allowed")).rows[0].allowed,false);
+  await assert.rejects(db.exec('select * from public.listings'), /permission denied/i);
+});
+test('SQL validates numbers and server-owned fields, rejects absent thickness', async () => {
+  rejected(await cmd('create_listing',{ ...listingInput(), quantityOnHand: 1.5 },B),'VALIDATION');
+  rejected(await cmd('create_need',{ ...needInput(), thicknessMm: null },S),'VALIDATION');
+  rejected(await cmd('create_listing',{ ...listingInput(), widthMm: 'NaN' },B),'VALIDATION');
+  const l=ok(await cmd('create_listing',{ ...listingInput(), businessId: OTHER_B, quantityReserved: 100 },B));
+  assert.equal(l.business_id,B); assert.equal(l.quantity_reserved,0);
+  const n=ok(await cmd('create_need',needInput(),S));
+  const noThickness=ok(await cmd('create_listing',{...listingInput(),thicknessMm:null},B));
+  rejected(await cmd('create_request',{needId:n.id,listingId:noThickness.id},S),'INCOMPATIBLE');
+});
+test('SQL ownership checks and RLS isolate other students and businesses', async () => {
+  const { l,n,r }=await fixture();
+  rejected(await cmd('create_request',{needId:n.id,listingId:l.id},OTHER),'NOT_FOUND');
+  rejected(await cmd('approve_request',{requestId:r.id},OTHER_B),'FORBIDDEN');
+  rejected(await cmd('cancel_request',{requestId:r.id},OTHER),'FORBIDDEN');
+  await actor(OTHER);
+  assert.equal((await db.query('select * from public.needs where id=$1',[n.id])).rows.length,0);
+  assert.equal((await db.query('select * from public.requests where id=$1',[r.id])).rows.length,0);
+  await actor(B);
+  assert.equal((await db.query('select * from public.needs where id=$1',[n.id])).rows.length,1);
+});
+test('SQL duplicate request and approval are idempotent; competing approvals cannot oversell', async () => {
+  const {l,n,r}=await fixture();
+  assert.equal(ok(await cmd('create_request',{needId:n.id,listingId:l.id},S)).id,r.id);
+  const n2=ok(await cmd('create_need',needInput(),S));
+  const r2=ok(await cmd('create_request',{needId:n2.id,listingId:l.id},S));
+  ok(await cmd('approve_request',{requestId:r.id},B));
+  ok(await cmd('approve_request',{requestId:r.id},B));
+  rejected(await cmd('approve_request',{requestId:r2.id},B),'OUT_OF_STOCK');
+  assert.deepEqual(await stock(l.id),{quantity_on_hand:5,quantity_reserved:3});
+  await actor(B);
+  await assert.rejects(db.query('update public.listings set quantity_reserved=0 where id=$1',[l.id]),/permission denied/i);
+});
+test('SQL code rotation, durable wrong attempts, private DTOs and single delivery', async () => {
+  const {l,r}=await fixture(); ok(await cmd('approve_request',{requestId:r.id},B));
+  const old=ok(await cmd('issue_delivery_code',{requestId:r.id},S));
+  const fresh=ok(await cmd('issue_delivery_code',{requestId:r.id},S));
+  assert.match(fresh.code,/^\d{6}$/);
+  assert.notEqual(old.code,fresh.code);
+  rejected(await cmd('confirm_delivery',{requestId:r.id,code:old.code},B),'INVALID_CODE');
+  await actor(B);
+  const views=(await db.query("select public.list_request_views('business') as result")).rows[0].result;
+  assert.equal(views.ok,true); assert.equal(JSON.stringify(views).includes('code_hash'),false);
+  assert.equal(JSON.stringify(views).includes('"code"'),false);
+  rejected(await cmd('issue_delivery_code',{requestId:r.id},B),'FORBIDDEN');
+  ok(await cmd('confirm_delivery',{requestId:r.id,code:fresh.code},B));
+  ok(await cmd('confirm_delivery',{requestId:r.id,code:fresh.code},B));
+  assert.deepEqual(await stock(l.id),{quantity_on_hand:2,quantity_reserved:0});
+  await actor(S); await assert.rejects(db.exec('select code_hash from public.deliveries'),/permission denied/i);
+});
+test('SQL failed-attempt count is committed on error and cannot be reset by rotation', async () => {
+  const {l,r}=await fixture(); ok(await cmd('approve_request',{requestId:r.id},B));
+  ok(await cmd('issue_delivery_code',{requestId:r.id},S));
+  for(let i=0;i<5;i++) rejected(await cmd('confirm_delivery',{requestId:r.id,code:'bad'},B),'INVALID_CODE');
+  rejected(await cmd('issue_delivery_code',{requestId:r.id},S),'TOO_MANY_ATTEMPTS');
+  rejected(await cmd('confirm_delivery',{requestId:r.id,code:'000000'},B),'TOO_MANY_ATTEMPTS');
+  await db.exec('reset role');
+  assert.equal((await db.query('select failed_attempts from public.deliveries where request_id=$1',[r.id])).rows[0].failed_attempts,5);
+  assert.deepEqual(await stock(l.id),{quantity_on_hand:5,quantity_reserved:3});
+});
+test('SQL cancellation and scheduled/on-demand expiration release reservations once', async () => {
+  const {l,r}=await fixture(); ok(await cmd('approve_request',{requestId:r.id},B));
+  await db.exec('reset role');
+  await db.query("update public.requests set expires_at=now()-interval '1 second' where id=$1",[r.id]);
+  await actor(S); await db.exec('select public.refresh_reservations(); select public.refresh_reservations();');
+  ok(await cmd('cancel_request',{requestId:r.id},S));
+  rejected(await cmd('issue_delivery_code',{requestId:r.id},S),'CONFLICT');
+  assert.deepEqual(await stock(l.id),{quantity_on_hand:5,quantity_reserved:0});
+  const f=await fixture(); ok(await cmd('approve_request',{requestId:f.r.id},B));
+  ok(await cmd('cancel_request',{requestId:f.r.id},S)); ok(await cmd('cancel_request',{requestId:f.r.id},S));
+  assert.deepEqual(await stock(f.l.id),{quantity_on_hand:5,quantity_reserved:0});
+});
+test('admin demo seed is repeatable and never resets existing stock', async () => {
+  await db.exec('reset role');
+  await db.query('update auth.users set email=$1 where id=$2',['ogrenci@demo.local',S]);
+  await db.query('update auth.users set email=$1 where id=$2',['isletme@demo.local',B]);
+  const seed=fs.readFileSync(path.join(__dirname,'../supabase/seed.sql'),'utf8');
+  await db.exec(seed);
+  const id='20000000-0000-0000-0000-000000000001';
+  await db.query('update public.listings set quantity_on_hand=7 where id=$1',[id]);
+  await db.exec(seed);
+  assert.equal((await db.query('select quantity_on_hand from public.listings where id=$1',[id])).rows[0].quantity_on_hand,7);
+  assert.equal((await db.query("select count(*)::int as count from public.listings where id::text like '20000000-%'")).rows[0].count,4);
+});

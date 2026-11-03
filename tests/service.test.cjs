@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { createDemoServices, createDemoStore } = require('../src/services/mock.ts');
 const { validDate } = require('../src/services/validation.ts');
+const { createSupabaseServices, mapListing } = require('../src/services/supabase.ts');
 const now = new Date('2030-01-01T12:00:00Z');
 const listing = { id: 'l1', businessId: 'demo-business', title: 'Ahşap', materialType: 'wood',
   widthMm: 600, heightMm: 400, thicknessMm: 6, region: 'İstanbul', quantityOnHand: 5,
@@ -63,4 +64,30 @@ test('missing thickness/incompatible dates rejected; strict date validation', as
   await assert.rejects(student.createRequest('n1', 'l1'), { code: 'INCOMPATIBLE' });
   assert.equal(validDate('2030-02-30'), false); assert.equal(validDate('2030-01-01'), true);
   await assert.rejects(student.createNeed({ ...need, quantity: 1.2 }), { code: 'VALIDATION' });
+});
+test('real adapter maps database fields and turns RPC failures into AppError', async () => {
+  const row={id:'l1',business_id:'owner',title:'Ahşap',material_type:'wood',width_mm:'600',height_mm:400,
+    thickness_mm:null,quantity_on_hand:12,quantity_reserved:2,region:'İstanbul',pickup_deadline:'2030-01-08'};
+  const mapped=mapListing(row);
+  assert.equal(mapped.businessId,'owner'); assert.equal(mapped.widthMm,600); assert.equal(mapped.thicknessMm,null);
+  const calls=[];
+  const api=createSupabaseServices(() => ({ rpc: async (name,params) => {
+    calls.push({name,params}); return { data:{ok:false,error:{code:'OUT_OF_STOCK',message:'Yeterli stok yok.'}},error:null };
+  } }));
+  await assert.rejects(api.createRequest('need-id','listing-id'), {name:'AppError',code:'OUT_OF_STOCK'});
+  assert.deepEqual(calls,[{name:'app_command',params:{p_action:'create_request',p_payload:{needId:'need-id',listingId:'listing-id'}}}]);
+});
+test('late auth profile result cannot restore a signed-out Supabase session', async () => {
+  let callback, resolveSession;
+  const authSession = new Promise(resolve => { resolveSession=resolve; });
+  const client={auth:{onAuthStateChange:cb=>{callback=cb;return {data:{subscription:{unsubscribe(){}}}};},
+    getSession:()=>authSession},from:()=>({select:()=>({eq:()=>({single:async()=>({data:{id:'s',role:'student',display_name:'Öğrenci'},error:null})})})})};
+  const api=createSupabaseServices(()=>client);
+  const received=[]; const stop=api.onAuthStateChange(s=>received.push(s));
+  callback('SIGNED_IN',{user:{id:'s'}});
+  await new Promise(resolve=>setTimeout(resolve,5));
+  callback('SIGNED_OUT',null);
+  resolveSession({data:{session:{user:{id:'s'}}},error:null});
+  await new Promise(resolve=>setTimeout(resolve,5));
+  assert.deepEqual(received,[null]); stop();
 });
