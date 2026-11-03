@@ -52,6 +52,11 @@ Bu eksik parçalar varmış gibi bağlanmadı ve ikinci bir UI eşleştirme moto
 
 ## Doğrulamanın sınırları
 
+**Güncelleme:** Canlı proje 3 Kasım 2026 tarihinde kuruldu ve aşağıda önceki
+teslimde bekleyen sunucu kontrolleri uygulandı. Güncel kayıt
+`docs/live-supabase-verification.md` içinde. Aşağıdaki canlı proje yok notu ilk
+teslim anına aittir.
+
 Yerelde geçen kontroller: TypeScript/lint (`npm run check`), 15 servis/SQL davranış
 testi, web dışa aktarımı, Expo Doctor 21/21. Ayrıca 390 x 844 tarayıcı görünümünde
 misafir rota koruması ve hesap değiştirerek talep -> onay -> kod -> teslim akışı
