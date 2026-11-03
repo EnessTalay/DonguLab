@@ -65,6 +65,7 @@ export function createDemoServices(store: DemoStore, clock = () => new Date()): 
   }
   return {
     mode: 'demo',
+    async signUp() { throw new AppError('CONFIGURATION', 'Kayıt için canlı bağlantı gereklidir.'); },
     async signIn(email, password) {
       const account = demoAccounts.find(a => a.email === email.trim().toLowerCase() && a.password === password);
       if (!account) throw new AppError('UNAUTHENTICATED', 'Demo e-posta veya parola yanlış.');

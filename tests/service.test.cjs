@@ -10,6 +10,28 @@ const listing = { id: 'l1', businessId: 'demo-business', title: 'Ahşap', materi
   quantityReserved: 0, pickupDeadline: '2030-01-08' };
 const need = { id: 'n1', studentId: 'demo-student', projectName: 'Maket', materialType: 'wood',
   widthMm: 300, heightMm: 200, thicknessMm: 6, region: 'İSTANBUL', quantity: 3, neededBy: '2030-01-04' };
+
+test('real registration trims email, sends no role, and respects confirmation', async () => {
+  let payload;
+  let session = null;
+  const service = createSupabaseServices(() => ({ auth: {
+    signUp: async input => { payload = input; return { data: { session }, error: null }; },
+  } }));
+  await assert.rejects(service.signUp('invalid', 'longpassword'), { code: 'VALIDATION' });
+  await assert.rejects(service.signUp('user@example.com', 'short'), { code: 'VALIDATION' });
+  assert.equal(payload, undefined);
+  assert.deepEqual(await service.signUp(' user@example.com ', 'longpassword'), { confirmationRequired: true });
+  assert.deepEqual(payload, { email: 'user@example.com', password: 'longpassword' });
+  session = { user: { id: 'new-user' } };
+  assert.deepEqual(await service.signUp('user@example.com', 'longpassword'), { confirmationRequired: false });
+});
+
+test('registration rate limits surface as an actionable error', async () => {
+  const service = createSupabaseServices(() => ({ auth: {
+    signUp: async () => ({ data: {}, error: { status: 429 } }),
+  } }));
+  await assert.rejects(service.signUp('user@example.com', 'longpassword'), { code: 'TOO_MANY_ATTEMPTS' });
+});
 async function setup() {
   let time = now;
   const store = createDemoStore([listing], [need, { ...need, id: 'n2' }]);
@@ -90,4 +112,45 @@ test('late auth profile result cannot restore a signed-out Supabase session', as
   resolveSession({data:{session:{user:{id:'s'}}},error:null});
   await new Promise(resolve=>setTimeout(resolve,5));
   assert.deepEqual(received,[null]); stop();
+});
+
+
+test('student matching agrees with shared transaction eligibility', () => {
+  const { matchListing } = require('../src/features/student/matching.ts');
+  const day = '2030-01-01';
+  assert.equal(matchListing(need, listing, day).eligible, true);
+  assert.equal(matchListing(need, { ...listing, widthMm: 200, heightMm: 300 }, day).eligible, true);
+  assert.equal(matchListing(need, { ...listing, region: 'Ankara' }, day).eligible, false);
+  assert.equal(matchListing(need, { ...listing, thicknessMm: null }, day).eligible, false);
+  assert.equal(matchListing(need, { ...listing, quantityReserved: 3 }, day).eligible, false);
+  assert.equal(matchListing(need, { ...listing, pickupDeadline: '2029-12-31' }, day).eligible, false);
+});
+
+test('need form validates real calendar dates, required thickness and server limits', () => {
+  const { parseNeedForm } = require('../src/features/student/need-form.ts');
+  const { validateNeed } = require('../src/services/validation.ts');
+  const draft = { projectName: ' Model ', materialType: 'wood', widthMm: '300,5', heightMm: '200',
+    thicknessMm: '6', quantity: '3', region: ' Istanbul ', neededBy: '2030-01-04' };
+  const parsed = parseNeedForm(draft, '2030-01-01');
+  assert.equal(parsed.input.widthMm, 300.5);
+  assert.equal(parsed.input.projectName, 'Model');
+  assert.doesNotThrow(() => validateNeed(parsed.input, '2030-01-01'));
+  for (const [field, value] of [['thicknessMm', ''], ['widthMm', '1000000000'], ['quantity', '1.5'],
+    ['quantity', '2147483648'], ['neededBy', '2030-02-30'], ['neededBy', '2029-12-31'],
+    ['neededBy', '01/04/2030'], ['projectName', 'a'.repeat(201)], ['region', 'a'.repeat(121)]]) {
+    const invalid = parseNeedForm({ ...draft, [field]: value }, '2030-01-01');
+    assert.equal(invalid.input, null, field);
+    assert.ok(invalid.errors[field], field);
+  }
+  const invalid = parseNeedForm({ ...draft, thicknessMm: '' }, '2030-01-01');
+  assert.ok(invalid.errors.thicknessMm);
+  assert.ok(parseNeedForm(draft, '2030-01-01').input, 'corrected form can be resubmitted');
+});
+
+test('matching puts eligible listings first even when invalid records score equally', () => {
+  const { rankMatches } = require('../src/features/student/matching.ts');
+  const result = rankMatches(need, [{ ...listing, id: 'invalid', title: '' }, listing], '2030-01-01');
+  assert.equal(result[0].listing.id, listing.id);
+  assert.equal(result[0].eligible, true);
+  assert.equal(result[1].eligible, false);
 });

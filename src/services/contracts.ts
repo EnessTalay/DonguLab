@@ -28,6 +28,7 @@ export class AppError extends Error {
 export interface AppServices {
   readonly mode: 'demo' | 'supabase';
   signIn(email: string, password: string): Promise<AppSession>;
+  signUp(email: string, password: string): Promise<{ confirmationRequired: boolean }>;
   signOut(): Promise<void>;
   getSession(): Promise<AppSession | null>;
   onAuthStateChange(listener: (session: AppSession | null) => void): () => void;

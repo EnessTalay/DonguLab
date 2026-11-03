@@ -30,6 +30,9 @@ export const mapRequest = (row: DbRequest): MaterialRequest => ({ id: row.id,
   needId: row.need_id, listingId: row.listing_id, studentId: row.student_id, quantity: row.quantity, status: row.status });
 
 function databaseError(error: { code?: string; message?: string; status?: number }): never {
+  if (error.code === 'email_not_confirmed') throw new AppError('UNAUTHENTICATED', 'Önce e-posta adresinize gönderilen onay bağlantısını açın.');
+  if (error.status === 429 || error.code === 'over_email_send_rate_limit') throw new AppError('TOO_MANY_ATTEMPTS', 'Çok fazla deneme yapıldı. Lütfen biraz bekleyin.');
+  if (['weak_password', 'email_address_invalid', 'validation_failed'].includes(error.code ?? '')) throw new AppError('VALIDATION', 'Geçerli bir e-posta ve daha güçlü bir parola kullanın.');
   if (error.code === '42501') throw new AppError('FORBIDDEN', 'Bu işlem için yetkiniz yok.');
   if (['PGRST301','PGRST302','refresh_token_not_found','invalid_credentials'].includes(error.code ?? '') || error.status === 401) {
     throw new AppError('UNAUTHENTICATED', 'Oturum veya giriş bilgileri geçersiz. Yeniden giriş yapın.');
@@ -48,7 +51,8 @@ export function createSupabaseServices(getClient: () => SupabaseClient): AppServ
     if (result.error) databaseError(result.error);
     const row = result.data as { id: string; role: Role; display_name: string };
     if (!['student', 'business'].includes(row.role)) throw new AppError('FORBIDDEN', 'Kullanıcı rolü geçersiz.');
-    return { profile: { id: row.id, role: row.role, displayName: row.display_name } };
+    const displayName = row.display_name === 'Yeni kullanıcı' ? (data.session.user.email ?? row.display_name) : row.display_name;
+    return { profile: { id: row.id, role: row.role, displayName } };
   }
   async function requireRole(role?: Role) {
     const session = await getSession();
@@ -79,6 +83,15 @@ export function createSupabaseServices(getClient: () => SupabaseClient): AppServ
   }
   return {
     mode: 'supabase',
+    async signUp(email, password) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || password.length < 8) {
+        throw new AppError('VALIDATION', 'Geçerli bir e-posta ve en az 8 karakterli parola girin.');
+      }
+      // No role metadata: the database creates students; businesses require admin approval.
+      const { data, error } = await getClient().auth.signUp({ email: email.trim(), password });
+      if (error) databaseError(error);
+      return { confirmationRequired: !data.session };
+    },
     async signIn(email, password) {
       const { error } = await getClient().auth.signInWithPassword({ email: email.trim(), password });
       if (error) databaseError(error);

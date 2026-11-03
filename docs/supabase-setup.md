@@ -1,8 +1,10 @@
 # Supabase kurulumu
 
-Varsayılan mod `demo`: hesap açmadan çalışır. Gerçek Supabase bağlantısı için
-aşağıdaki adımları yeni/boş bir proje üzerinde uygulayın. Bu işlem burada canlı
-bir projeye uygulanmadı; proje henüz oluşturulmadı.
+Varsayılan mod `supabase`: gerçek bağlantı yapılandırması gerektirir. Yerel demo
+için açıkça `EXPO_PUBLIC_DATA_MODE=demo` seçin. Mevcut canlı kurulumun doğrulaması
+`live-supabase-verification.md`, yeni kullanıcı kaydı ve yönetici tarafından
+işletme onayı `real-user-rollout.md` dosyasında anlatılır. Aşağıdaki kurulum
+adımları yeni/boş projeler içindir; mevcut tablolara ilk migration'ı tekrar uygulamayın.
 
 ## 1. Proje ve tablolar
 
@@ -87,8 +89,8 @@ okuyamaz. Kod yalnız öğrenciye üretim cevabında gelir; kaybolursa yenilenir
 - Kod sunucuda kriptografik UUID rastgeleliğinden 6 hane üretilir; request ID ile
   tuzlanmış SHA-256 hash saklanır. 5 yanlış deneme ve 10 üretim limiti vardır.
   Hatalı kod RPC zarfında hata döndürür; deneme artışı transaction'da korunur.
-- Rol değişikliği ve hesap yönetimi yalnız yöneticiye aittir. Kayıt, parola
-  sıfırlama, realtime, mağaza paketi ve üretim izleme bu teslimde yoktur.
+- İşletme rolü değişikliği yalnız yöneticiye aittir. Öğrenci kaydı giriş ekranında
+  bulunur. Parola sıfırlama, realtime, mağaza paketi ve üretim izleme henüz yoktur.
 
 Kaynaklar: [Supabase React Native Auth](https://supabase.com/docs/guides/auth/quickstarts/react-native),
 [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security),

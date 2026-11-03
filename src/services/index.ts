@@ -5,7 +5,7 @@ import { getSupabaseClient } from './client';
 import { AppError } from './contracts';
 
 export * from './contracts';
-const configuredMode = process.env.EXPO_PUBLIC_DATA_MODE ?? 'demo';
+const configuredMode = process.env.EXPO_PUBLIC_DATA_MODE ?? 'supabase';
 export const configurationError = ['demo', 'supabase'].includes(configuredMode) ? null :
   new AppError('CONFIGURATION', 'EXPO_PUBLIC_DATA_MODE yalnız demo veya supabase olabilir.');
 // Invalid real configuration must NEVER silently fall back to simulated success.

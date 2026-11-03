@@ -14,17 +14,17 @@ function Navigation() {
     <>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerStyle: { backgroundColor: '#f2f6f1' }, headerTintColor: '#16493e', contentStyle: { backgroundColor: '#f2f6f1' } }}>
-        <Stack.Screen name="index" options={{ title: 'DöngüLab' }} />
+        <Stack.Screen name="index" options={{ title: 'DöngüLab', headerBackVisible: false }} />
         <Stack.Protected guard={!session}>
           <Stack.Screen name="sign-in" options={{ title: 'Giriş' }} />
         </Stack.Protected>
         <Stack.Protected guard={session?.profile.role === 'student'}>
-          <Stack.Screen name="student/index" options={{ title: 'Öğrenci' }} />
+          <Stack.Screen name="student" options={{ headerShown: false, title: 'Öğrenci' }} />
         </Stack.Protected>
         <Stack.Protected guard={session?.profile.role === 'business'}>
           <Stack.Screen name="business/index" options={{ title: 'İşletme' }} />
         </Stack.Protected>
-        <Stack.Protected guard={!!session}>
+        <Stack.Protected guard={!!session && __DEV__}>
           <Stack.Screen name="workbench" options={{ title: 'Altyapı test ekranı' }} />
         </Stack.Protected>
       </Stack>
